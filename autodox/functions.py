@@ -58,7 +58,7 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
     for name, item in module.__dict__.items():
         item_type = type(item)
 
-        if name[:1] == '_' and not include_private:
+        if name[:1] == '_' and not (include_private or include_dunder):
             continue
         if name[:2] == '__' and not include_dunder:
             continue
@@ -283,7 +283,6 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     include_dunder = 'include_dunder' in options
     suboptions = {**options, 'header_level': header_level + 1}
 
-    name = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
     parent = cls.__base__ if hasattr(cls, '__base__') else None
 
     properties = {}
@@ -309,6 +308,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         if type(item) is property:
             properties.extend({name: item})
 
+    name = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
     doc = _header(f'{name}({parent})', header_level) if parent else _header(name, header_level)
 
     if annotations:
