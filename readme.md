@@ -6,7 +6,6 @@ and docstrings.
 ## Status
 
 - [x] Code
-- [ ] Tests
 - [x] Docs
 - [ ] Package published
 
@@ -23,7 +22,7 @@ pip install autodox
 Use the following to document a module with default configuration:
 
 ```bash
-python -m autodox module_name > target_file.md
+autodox module_name [options] > target_file.md
 ```
 
 The output can be configured with the following options:

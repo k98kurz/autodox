@@ -22,3 +22,6 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/k98kurz/autodox"
 "Bug Tracker" = "https://github.com/k98kurz/autodox/issues"
+
+[project.scripts]
+autodox = "autodox.functions:main_cli"
