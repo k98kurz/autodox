@@ -5,9 +5,9 @@ and docstrings.
 
 ## Status
 
-- [ ] Code
+- [x] Code
 - [ ] Tests
-- [ ] Docs
+- [x] Docs
 - [ ] Package published
 
 ## Usage
@@ -68,6 +68,7 @@ module
 Produces docs for a value. Valid options are the following:
 
 - `header_level: int` - number of additional hashtags to add to headers
+- `format: str` - format can be one of 'header', 'paragraph', or 'list'
 
 #### `dox_a_function(function: Callable, options: dict = None) -> str`
 
@@ -80,10 +81,10 @@ Produces docs for a function. Valid options are the following:
 Produces docs for a class. Valid options are the following:
 
 - `exclude_names: list[str]` - names to exclude from docs
-- `exclude_types: list[str]` - types to exclude from docs
 - `header_level: int` - number of additional hashtags to add to headers
 - `include_private: bool` - if True, includes things with names prefaced by '_'
 - `include_dunder: bool` - if True, includes things with names prefaced by '__'
+- `method_format: str` - can be one of 'header', 'paragraph', or 'list'
 
 
 ## Testing
