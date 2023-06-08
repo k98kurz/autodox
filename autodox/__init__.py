@@ -1,3 +1,8 @@
+"""Autodox is a package for generating documentation from code
+    annotations, types, and docstrings.
+"""
+
+
 from sys import argv
 from .functions import (
     dox_a_class,

@@ -15,7 +15,7 @@ def _paragraph(docstring: str) -> str:
     """
     def make_line(tokens: list[str]) -> tuple[str, list[str]]:
         line = ''
-        while len(tokens) and len(line) + len(tokens[0]) <= 72:
+        while len(tokens) and (len(line) + len(tokens[0]) <= 80 or line.count('`') == 1):
             line += tokens[0] + ' '
             tokens = tokens[1:]
         return (line[:-1], tokens)
@@ -43,11 +43,12 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     exclude_types = options['exclude_types'] if 'exclude_types' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0
+    function_format = options['function_format'] if 'function_format' in options else 'header'
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
     include_submodules = 'include_submodules' in options
     document_submodules = 'document_submodules' in options
-    suboptions = {**options, 'header_level': header_level + 1}
+    suboptions = {**options, 'header_level': header_level + 2}
 
     values = []
     functions = []
@@ -80,35 +81,37 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
             continue
 
         if type(item) is type(dox_a_module):
-            doc = dox_a_function(item, suboptions)
+            doc = dox_a_function(item, {**suboptions, 'format': function_format})
             functions.append(doc)
             continue
 
-        doc = dox_a_value(item, suboptions)
+        doc = dox_a_value(item, {**suboptions, 'name': name})
         values.append(doc)
 
     doc = _header(module.__name__, header_level)
 
-    if hasattr(module, '__doc__'):
+    if hasattr(module, '__doc__') and module.__doc__:
         doc += _paragraph(module.__doc__)
 
     if len(classes):
-        doc += _header('Classes', header_level)
+        doc += _header('Classes', header_level + 1)
         for cls in classes:
             doc += cls
 
     if len(functions):
-        doc += _header('Functions', header_level)
+        doc += _header('Functions', header_level + 1)
         for func in functions:
             doc += func
+        if function_format == 'list':
+            doc += '\n'
 
     if len(values):
-        doc += _header('Values', header_level)
+        doc += _header('Values', header_level + 1)
         for val in values:
             doc += val
 
     if len(submodules):
-        doc += _header('Submodules', header_level)
+        doc += _header('Submodules', header_level + 1)
         for sub in submodules:
             doc += sub
 
@@ -123,6 +126,8 @@ def dox_a_value(value: Any, options: dict = {}) -> str:
     format = options['format'] if 'format' in options else 'list'
 
     name = value.__name__ if hasattr(value, '__name__') else '{unknown/unnamed}'
+    if 'name' in options:
+        name = options['name']
     type_str = type(value).__name__
 
     match format:
@@ -157,11 +162,12 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     annotations = ', '.join(annotations) or ''
     docstring = function.__doc__ if hasattr(function, '__doc__') else None
 
-    signature = f'`{name}({annotations})`'
+    signature = f'`{name}({annotations})'
     if return_annotation:
         if hasattr(return_annotation, '__name__'):
             return_annotation = return_annotation.__name__
         signature += f' -> {return_annotation}'
+    signature += ':` '
 
     doc = ''
 
