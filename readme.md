@@ -95,27 +95,6 @@ Produces docs for a class. Valid options are the following:
 - `method_format: str` - can be one of 'header', 'paragraph', or 'list'
 
 
-## Testing
-
-First, clone the repo, set up the virtualenv, and install requirements.
-
-```bash
-git clone ...
-python -m venv venv/
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-For windows, replace `source venv/bin/activate` with `source venv/Scripts/activate`.
-
-Then run the test suite with the following:
-
-```bash
-python test/test_functions.py
-```
-
-There are currently 0 tests.
-
 ## ISC License
 
 Copyleft (c) 2023 k98kurz
