@@ -319,6 +319,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         doc += _header('Annotations', header_level + 1)
         for name, value in annotations.items():
             doc += _list(f'{name}: {str(value)}')
+        doc += '\n'
 
     if properties:
         doc += _dox_properties(properties, header_level)
