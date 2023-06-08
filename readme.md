@@ -30,6 +30,9 @@ The output can be configured with the following options:
 - `-exclude_type=type` to exclude any module parts of the given type
 - `-package=module_name` to scope a relative import
 - `-header_level=number` to increase the hashtag count in headers by `number`
+- `-function_format=format` - can be one of 'header', 'paragraph', or 'list'
+- `-method_format=format` - can be one of 'header', 'paragraph', or 'list'
+- `-value_format=format` - can be one of 'header', 'paragraph', or 'list'
 - `-include_private` to include things prefaced with '_'
 - `-include_dunder` to include things prefaced with '__'
 - `-include_submodules` to include submodules

@@ -44,6 +44,7 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
     exclude_types = options['exclude_types'] if 'exclude_types' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0
     function_format = options['function_format'] if 'function_format' in options else 'header'
+    value_format = options['value_format'] if 'value_format' in options else 'list'
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
     include_submodules = 'include_submodules' in options
@@ -85,7 +86,7 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
             functions.append(doc)
             continue
 
-        doc = dox_a_value(item, {**suboptions, 'name': name})
+        doc = dox_a_value(item, {**suboptions, 'name': name, 'format': value_format})
         values.append(doc)
 
     doc = _header(module.__name__, header_level)
@@ -309,7 +310,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
             properties.extend({name: item})
 
     name = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
-    doc = _header(f'{name}({parent})', header_level) if parent else _header(name, header_level)
+    doc = _header(f'`{name}({parent})`', header_level) if parent else _header(f'`{name}`', header_level)
 
     if annotations:
         doc += _header('Annotations', header_level + 1)
@@ -334,17 +335,23 @@ def main_cli() -> None:
 
     for arg in argv[1:]:
         if arg[:14] == '-exclude_name=':
-            if 'exclude_name' not in _settings:
+            if 'exclude_names' not in _settings:
                 _settings['exclude_names'] = []
-            _settings['exclude_names'].append(arg[14:])
+            _settings['exclude_names'].extend(arg[14:].split(','))
         elif arg[:14] == '-exclude_type=':
             if 'exclude_types' not in _settings:
                 _settings['exclude_types'] = []
-            _settings['exclude_types'].append(arg[14:])
+            _settings['exclude_types'].extend(arg[14:].split(','))
         elif arg[:14] == '-header_level=':
             _settings['header_level'] = int(arg[14:])
         elif arg[:9] == '-package=':
             _settings['package'] = arg[9:]
+        elif arg[:17] == '-function_format=':
+            _settings['function_format'] = arg[17:]
+        elif arg[:15] == '-method_format=':
+            _settings['method_format'] = arg[15:]
+        elif arg[:14] == '-value_format=':
+            _settings['value_format'] = arg[14:]
         elif arg == '-include_private':
             _settings['include_private'] = True
         elif arg == '-include_dunder':
