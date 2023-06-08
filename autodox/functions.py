@@ -152,14 +152,21 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     annotations = function.__annotations__ if hasattr(function, '__annotations__') else {}
     return_annotation = annotations['return'] if 'return' in annotations else None
     annotations = [
-        f'{key}: {value.__name__ if hasattr(value, "__name") else str(value)}'
+        f'{key}: {value.__name__ if hasattr(value, "__name__") else str(value)}'
         for key, value in annotations.items()
         if key != 'return'
     ]
     defaults = [*function.__defaults__] if function.__defaults__ else []
     offset = len(annotations) - len(defaults)
-    for i in range(len(defaults)):
-        annotations[i+offset] += f' = {defaults[i]}'
+    if offset < 0:
+        offset = 0
+
+    if annotations and defaults:
+        for i in range(len(defaults)):
+            if defaults[i] == '':
+                annotations[i+offset] += f" = ''"
+            else:
+                annotations[i+offset] += f' = {defaults[i]}'
 
     annotations = ', '.join(annotations) or ''
     docstring = function.__doc__ if hasattr(function, '__doc__') else None
@@ -236,6 +243,9 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
 
 def _dox_methods(methods: dict, options: dict = {}) -> str:
     """Format a collection of methods/functions."""
+    header_level = options['header_level'] if 'header_level' in options else 0
+    header_level += 1
+    suboptions = {**options, 'header_level': header_level}
     format = options['method_format'] if 'method_format' in options else 'header'
     doc = ''
 
@@ -257,15 +267,15 @@ def _dox_methods(methods: dict, options: dict = {}) -> str:
 
     if publics:
         for _, value in publics.items():
-            doc += dox_a_function(value, {**options, 'format': format})
+            doc += dox_a_function(value, {**suboptions, 'format': format})
 
     if privates:
         for _, value in privates.items():
-            doc += dox_a_function(value, {**options, 'format': format})
+            doc += dox_a_function(value, {**suboptions, 'format': format})
 
     if dunders:
         for _, value in dunders.items():
-            doc += dox_a_function(value, {**options, 'format': format})
+            doc += dox_a_function(value, {**suboptions, 'format': format})
 
     return doc
 
