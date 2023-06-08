@@ -29,6 +29,8 @@ python -m autodox module_name > target_file.md
 The output can be configured with the following options:
 - `-exclude_name=name` to exclude a specific part of the module by name
 - `-exclude_type=type` to exclude any module parts of the given type
+- `-package=module_name` to scope a relative import
+- `-header_level=number` to increase the hashtag count in headers by `number`
 - `-include_private` to include things prefaced with '_'
 - `-include_dunder` to include things prefaced with '__'
 - `-include_submodules` to include submodules
@@ -39,10 +41,51 @@ The output can be configured with the following options:
 The autodox package can also be used by importing and running the desired
 documentation function(s). The following are included.
 
-- `dox_a_module(module: ModuleType) -> str` produces docs for a module
-- `dox_a_value(value: Any) -> str` produces docs for a value
-- `dox_a_function(function: Callable) -> str` produces docs for a function
-- `dox_a_class(class: type) -> str` produces docs for a class
+- `dox_a_module(module: ModuleType, options: dict = None) -> str` produces docs for a module
+- `dox_a_value(value: Any, options: dict = None) -> str` produces docs for a value
+- `dox_a_function(function: Callable, options: dict = None) -> str` produces docs for a function
+- `dox_a_class(cls: type, options: dict = None) -> str` produces docs for a class
+
+The valid options will for each will be described below.
+
+#### `dox_a_module(module: ModuleType, options: dict = None) -> str`
+
+Produces docs for a module. Valid options are the following:
+
+- `exclude_names: list[str]` - names to exclude from docs
+- `exclude_types: list[str]` - types to exclude from docs
+- `header_level: int` - number of additional hashtags to add to headers
+- `package: str` - name of a package for scoping a relative import
+- `include_private: bool` - if True, includes things with names prefaced by '_'
+- `include_dunder: bool` - if True, includes things with names prefaced by '__'
+- `include_submodules: bool` - if True, notes will be made about any additional
+modules encountered when analyzing the specified module
+- `document_submodules: bool` - if True, `dox_a_module` will be called
+recursively on any additional modules encountered when analyzing the specified
+module
+
+#### `dox_a_value(value: Any, options: dict = None) -> str`
+
+Produces docs for a value. Valid options are the following:
+
+- `header_level: int` - number of additional hashtags to add to headers
+
+#### `dox_a_function(function: Callable, options: dict = None) -> str`
+
+Produces docs for a function. Valid options are the following:
+
+- `header_level: int` - number of additional hashtags to add to headers
+
+#### `dox_a_class(cls: type, options: dict = None) -> str`
+
+Produces docs for a class. Valid options are the following:
+
+- `exclude_names: list[str]` - names to exclude from docs
+- `exclude_types: list[str]` - types to exclude from docs
+- `header_level: int` - number of additional hashtags to add to headers
+- `include_private: bool` - if True, includes things with names prefaced by '_'
+- `include_dunder: bool` - if True, includes things with names prefaced by '__'
+
 
 ## Testing
 
