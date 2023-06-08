@@ -55,7 +55,6 @@ Produces docs for a module. Valid options are the following:
 - `exclude_names: list[str]` - names to exclude from docs
 - `exclude_types: list[str]` - types to exclude from docs
 - `header_level: int` - number of additional hashtags to add to headers
-- `package: str` - name of a package for scoping a relative import
 - `include_private: bool` - if True, includes things with names prefaced by '_'
 - `include_dunder: bool` - if True, includes things with names prefaced by '__'
 - `include_submodules: bool` - if True, notes will be made about any additional
