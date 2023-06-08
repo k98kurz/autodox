@@ -8,11 +8,11 @@ version = "0.0.1"
 authors = [
   { name="k98kurz", email="k98kurz@gmail.com" },
 ]
-description = "Tool for generating documentation automatically from code annotations, types,and docstrings."
+description = "Tool for generating documentation automatically from code annotations, types, and docstrings."
 readme = "readme.md"
 requires-python = ">=3.7"
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: ISC License (ISCL)",
   "Operating System :: OS Independent",

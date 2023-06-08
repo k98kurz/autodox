@@ -78,7 +78,8 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
 
         if isinstance(item, type):
             doc = dox_a_class(item, suboptions)
-            classes.append(doc)
+            if doc:
+                classes.append(doc)
             continue
 
         if type(item) is type(dox_a_module):
@@ -310,6 +311,8 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
             properties.extend({name: item})
 
     name = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
+    if name in exclude_names:
+        return ''
     doc = _header(f'`{name}({parent})`', header_level) if parent else _header(f'`{name}`', header_level)
 
     if annotations:
@@ -326,7 +329,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     return doc
 
 
-def main_cli() -> None:
+def main_cli() -> int:
     """Entry point for pip installed wrapper function to invoke via CLI."""
     from importlib import import_module
     from sys import argv
@@ -360,12 +363,20 @@ def main_cli() -> None:
             _settings['include_submodules'] = True
         elif arg == '-document_submodules':
             _settings['document_submodules'] = True
+        elif arg[0] == '-':
+            print(f'unrecognized option: {arg}')
+            return 1
         else:
             _module = arg
 
-    if 'package' in _settings:
-        _module = import_module(_module, _settings['package'])
-    else:
-        _module = import_module(_module)
+    try:
+        if 'package' in _settings:
+            _module = import_module(_module, _settings['package'])
+        else:
+            _module = import_module(_module)
+    except ModuleNotFoundError as e:
+        print(f'ModuleNotFoundError: {str(e)}')
+        return 1
 
     print(dox_a_module(_module, _settings))
+    return 0

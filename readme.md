@@ -7,7 +7,7 @@ and docstrings.
 
 - [x] Code
 - [x] Docs
-- [ ] Package published
+- [x] Package published
 
 ## Usage
 
@@ -37,6 +37,12 @@ The output can be configured with the following options:
 - `-include_dunder` to include things prefaced with '__'
 - `-include_submodules` to include submodules
 - `-document_submodules` to run the module documentation for submodules
+
+For experimentation and to learn how the options work, try running the following:
+
+```bash
+autodox autodox [options]
+```
 
 ### Programmatic access
 
