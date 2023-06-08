@@ -305,10 +305,10 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
             continue
 
         if type(item) is type(dox_a_function):
-            methods.extend({name: item})
+            methods[name] = item
 
         if type(item) is property:
-            properties.extend({name: item})
+            properties[name] = item
 
     name = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
     if name in exclude_names:
