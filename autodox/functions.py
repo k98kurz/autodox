@@ -193,7 +193,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
 
 def _dox_properties(properties: dict, header_level: int = 0) -> str:
     """Format properties for a class."""
-    doc = _header('Properties', header_level + 1)
+    doc = ''
     dunders = {
         name: value
         for name, value in properties.items()
@@ -236,9 +236,8 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
 
 def _dox_methods(methods: dict, options: dict = {}) -> str:
     """Format a collection of methods/functions."""
-    header_level = options['header_level'] if 'header_level' in options else 0
     format = options['method_format'] if 'method_format' in options else 'header'
-    doc = _header('Methods', header_level + 1)
+    doc = ''
 
     dunders = {
         name: value
@@ -322,9 +321,11 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         doc += '\n'
 
     if properties:
+        doc += _header('Properties', header_level + 1)
         doc += _dox_properties(properties, header_level)
 
     if methods:
+        doc += _header('Methods', header_level + 1)
         doc += _dox_methods(methods, suboptions)
 
     return doc
