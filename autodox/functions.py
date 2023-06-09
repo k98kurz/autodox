@@ -1,12 +1,78 @@
+from enum import Enum, auto
 from types import ModuleType
 from typing import Any, Callable
+
+
+
+class Event(Enum):
+    AFTER_HEADER = auto()
+    AFTER_PARAGRAPH = auto()
+    AFTER_LIST = auto()
+    BEFORE_VALUE = auto()
+    AFTER_VALUE = auto()
+    BEFORE_FUNCTION = auto()
+    AFTER_FUNCTION = auto()
+    BEFORE_CLASS = auto()
+    AFTER_CLASS = auto()
+    BEFORE_MODULE = auto()
+    AFTER_MODULE = auto()
+
+
+_handlers = {}
+
+
+def _set_handler(event: Event, function: Callable) -> None:
+    """Set a handler for a specific event."""
+    if not callable(function):
+        raise TypeError('function must be callable')
+
+    _handlers[event.name] = function
+
+
+def set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, dict]]) -> None:
+    """Sets a handler for a BEFORE_ event."""
+    if type(event) is not Event:
+        raise TypeError('event must be Event')
+    if 'BEFORE_' not in event.name:
+        raise ValueError('event must be a BEFORE_ event')
+
+    _set_handler(event, function)
+
+
+def set_after_handler(event: Event, function: Callable[[str], str]) -> None:
+    """Sets a handler for an AFTER_ event."""
+    if type(event) is not Event:
+        raise TypeError('event must be Event')
+    if 'AFTER_' not in event.name:
+        raise ValueError('event must be an AFTER_ event')
+
+    _set_handler(event, function)
+
+
+def unset_handler(event: Event) -> None:
+    """Unset an event handling handler."""
+    if type(event) is not Event:
+        raise TypeError('event must be Event')
+    if event.name in _handlers:
+        del _handlers[event.name]
+
+
+def _invoke_handler(event: Event, *args) -> None:
+    """Invokes the handler for the event if set, otherwise return the
+        parameters.
+    """
+    if event.name in _handlers:
+        val = _handlers[event.name](*args)
+        return val[0] if len(val) == 1 else val
+    return args[0] if len(args) == 1 else args
 
 
 def _header(line: str, header_level: int = 0) -> str:
     """Takes a line and returns it formatted as a header with the proper
         number of hashtags for the given header_level.
     """
-    return ''.join(['#' for _ in range(header_level+1)]) + f' {line}\n\n'
+    doc = ''.join(['#' for _ in range(header_level+1)]) + f' {line}\n\n'
+    return _invoke_handler(Event.AFTER_HEADER, doc)
 
 
 def _paragraph(docstring: str) -> str:
@@ -27,12 +93,14 @@ def _paragraph(docstring: str) -> str:
         line, tokens = make_line(tokens)
         lines.append(line)
 
-    return '\n'.join(lines) + '\n\n'
+    doc = '\n'.join(lines) + '\n\n'
+    return _invoke_handler(Event.AFTER_PARAGRAPH, doc)
 
 
 def _list(line: str) -> str:
     """Takes a line and returns a formatted list item."""
-    return _paragraph(f'- {line}')[:-1]
+    doc = _paragraph(f'- {line}')[:-1]
+    return _invoke_handler(Event.AFTER_LIST, doc)
 
 
 def dox_a_module(module: ModuleType, options: dict = {}) -> str:
@@ -40,6 +108,7 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
         returns a str containing markdown documentation generated from
         types, annotations, and docstrings.
     """
+    module, options = _invoke_handler(Event.BEFORE_MODULE, module, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     exclude_types = options['exclude_types'] if 'exclude_types' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0
@@ -117,13 +186,14 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
         for sub in submodules:
             doc += sub
 
-    return doc
+    return _invoke_handler(Event.AFTER_MODULE, doc)
 
 
 def dox_a_value(value: Any, options: dict = {}) -> str:
     """Collects some information about a value and returns it formatted
         as specified in the options or as a list.
     """
+    value, options = _invoke_handler(Event.BEFORE_VALUE, value, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
 
@@ -131,20 +201,24 @@ def dox_a_value(value: Any, options: dict = {}) -> str:
     if 'name' in options:
         name = options['name']
     type_str = type(value).__name__
+    doc = ''
 
     match format:
         case 'header':
-            return _header(f'{name}: {type_str}', header_level)
+            doc = _header(f'{name}: {type_str}', header_level)
         case 'paragraph':
-            return _paragraph(f'{name}: {type_str}')
+            doc = _paragraph(f'{name}: {type_str}')
         case _:
-            return _list(f'{name}: {type_str}')
+            doc = _list(f'{name}: {type_str}')
+
+    return _invoke_handler(Event.AFTER_VALUE, doc)
 
 
 def dox_a_function(function: Callable, options: dict = {}) -> str:
     """Collects some information about a function and returns it
         formatted as specified in the options or as a list.
     """
+    function, options = _invoke_handler(Event.BEFORE_FUNCTION, function, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
 
@@ -195,7 +269,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
                 doc += docstring
             doc = _list(doc)
 
-    return doc
+    return _invoke_handler(Event.AFTER_FUNCTION, doc)
 
 
 def _dox_properties(properties: dict, header_level: int = 0) -> str:
@@ -288,6 +362,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         options['include_private'] or options['include_dunder'] are
         specified, respectively.
     """
+    cls, options = _invoke_handler(Event.BEFORE_CLASS, cls, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0
     include_private = 'include_private' in options
@@ -338,7 +413,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         doc += _header('Methods', header_level + 1)
         doc += _dox_methods(methods, suboptions)
 
-    return doc
+    return _invoke_handler(Event.AFTER_CLASS, doc)
 
 
 def main_cli() -> int:
