@@ -129,7 +129,7 @@ def handle_before_function(function: Callable, options: dict):
     options['header_level'] = 2
     return (function, options)
 
-set_before_handler(BEFORE_FUNCTION, handle_before_function)
+set_before_handler(Event.BEFORE_FUNCTION, handle_before_function)
 ```
 
 Handlers for the `AFTER_` events can be set using the `set_after_handler`
@@ -145,7 +145,7 @@ def handle_after_function(doc: str):
     # do some string manipulation
     return doc + 'But really, why would you call this function anyway?\n\n'
 
-set_after_handler(AFTER_FUNCTION, handle_after_function)
+set_after_handler(Event.AFTER_FUNCTION, handle_after_function)
 ```
 
 Muliple handlers can be set for each event, and they will be executed in order,
