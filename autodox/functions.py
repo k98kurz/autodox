@@ -26,7 +26,12 @@ def _set_handler(event: Event, function: Callable) -> None:
     if not callable(function):
         raise TypeError('function must be callable')
 
-    _handlers[event.name] = function
+    if event.name in _handlers:
+        first = _handlers[event.name]
+        second = function
+        _handlers[event.name] = lambda *args: second(first(*args))
+    else:
+        _handlers[event.name] = function
 
 
 def set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, dict]]) -> None:

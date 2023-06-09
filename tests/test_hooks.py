@@ -153,6 +153,26 @@ class TestHooks(unittest.TestCase):
         after = functions.dox_a_module(functions)
         assert after == before + 'AFTER'
 
+    def test_event_handler_chaining(self):
+        val = 'some str'
+        before = functions.dox_a_value(val)
+        functions.set_after_handler(
+            functions.Event.AFTER_VALUE,
+            lambda doc: doc + 'AFTER1 '
+        )
+        functions.set_after_handler(
+            functions.Event.AFTER_VALUE,
+            lambda doc: doc + 'AFTER2'
+        )
+        after = functions.dox_a_value(val)
+        assert after == before + 'AFTER1 AFTER2'
+        functions.set_after_handler(
+            functions.Event.AFTER_VALUE,
+            lambda doc: doc + ' AFTER3'
+        )
+        after = functions.dox_a_value(val)
+        assert after == before + 'AFTER1 AFTER2 AFTER3'
+
 
 if __name__ == '__main__':
     unittest.main()
