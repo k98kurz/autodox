@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from types import ModuleType
+from types import ModuleType, MethodType, FunctionType
 from typing import Any, Callable
 
 
@@ -226,6 +226,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     function, options = _invoke_handler(Event.BEFORE_FUNCTION, function, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
+    prepend = options['prepend'] if 'prepend' in options else ''
 
     name = function.__name__ if hasattr(function, '__name__') else '{unknown/unnamed}'
     annotations = function.__annotations__ if hasattr(function, '__annotations__') else {}
@@ -235,7 +236,11 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
         for key, value in annotations.items()
         if key != 'return'
     ]
-    defaults = [*function.__defaults__] if function.__defaults__ else []
+
+    if hasattr(function, '__defaults__') and function.__defaults__:
+        defaults = [*function.__defaults__]
+    else:
+        defaults = []
     offset = len(annotations) - len(defaults)
     if offset < 0:
         offset = 0
@@ -250,7 +255,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     annotations = ', '.join(annotations) or ''
     docstring = function.__doc__ if hasattr(function, '__doc__') else None
 
-    signature = f'`{name}({annotations})'
+    signature = f'`{prepend}{name}({annotations})'
     if return_annotation:
         if hasattr(return_annotation, '__name__'):
             return_annotation = return_annotation.__name__
@@ -320,7 +325,7 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
     return doc
 
 
-def _dox_methods(methods: dict, options: dict = {}) -> str:
+def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
     """Format a collection of methods/functions."""
     header_level = options['header_level'] if 'header_level' in options else 0
     header_level += 1
@@ -345,8 +350,13 @@ def _dox_methods(methods: dict, options: dict = {}) -> str:
     }
 
     if publics:
-        for _, value in publics.items():
-            doc += dox_a_function(value, {**suboptions, 'format': format})
+        for name, value in publics.items():
+            if isinstance(value, classmethod):
+                doc += dox_a_function(value, {**suboptions, 'format': format, 'prepend': '@classmethod '})
+            elif isinstance(cls.__dict__[name], staticmethod):
+                doc += dox_a_function(value, {**suboptions, 'format': format, 'prepend': '@staticmethod '})
+            else:
+                doc += dox_a_function(value, {**suboptions, 'format': format})
 
     if privates:
         for _, value in privates.items():
@@ -357,6 +367,16 @@ def _dox_methods(methods: dict, options: dict = {}) -> str:
             doc += dox_a_function(value, {**suboptions, 'format': format})
 
     return doc
+
+
+def _get_all_annocations(cls: type) -> dict:
+    """Collects all annotations from a class hierarchy."""
+    annotations = cls.__annotations__ if hasattr(cls, '__annotations__') else {}
+    parent = cls.__base__ if hasattr(cls, '__base__') else None
+    if parent:
+        if hasattr(parent, '__annotations__'):
+            annotations = {**_get_all_annocations(parent.__annotations__), **annotations}
+    return annotations
 
 
 def dox_a_class(cls: type, options: dict = {}) -> str:
@@ -378,11 +398,9 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
 
     properties = {}
     methods = {}
-    annotations = cls.__annotations__ if hasattr(cls, '__annotations__') else {}
+    annotations = _get_all_annocations(cls)
 
     if parent:
-        if hasattr(parent, '__annotations__'):
-            annotations = {**parent.__annotations__, **annotations}
         parent = parent.__name__ if hasattr(parent, '__name__') else str(parent)
 
     for name, item in cls.__dict__.items():
@@ -393,7 +411,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         if name in exclude_names:
             continue
 
-        if type(item) is type(dox_a_function):
+        if type(item) in (MethodType, FunctionType, staticmethod, classmethod):
             methods[name] = item
 
         if type(item) is property:
@@ -416,9 +434,25 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
 
     if methods:
         doc += _header('Methods', header_level + 1)
-        doc += _dox_methods(methods, suboptions)
+        doc += _dox_methods(cls, methods, suboptions)
 
     return _invoke_handler(Event.AFTER_CLASS, doc)
+
+
+def _cli_help(name: str) -> int:
+    print(f'Usage: {name} [package[.module]] [options] ')
+    print('\t-exclude_name=str: exclude the given name (or csv of names)')
+    print('\t-exclude_type=str: exclude the given type (or csv of types)')
+    print('\t-header_level=int: number of hashtags to prepend to headers')
+    print('\t-package=str: name of package if not using the . notation')
+    print('\t-function_format=str: choose one of "header", "paragraph", or "list"')
+    print('\t-method_format=type: choose one of "header", "paragraph", or "list"')
+    print('\t-value_format=type: choose one of "header", "paragraph", or "list"')
+    print('\t-include_private: includes things prefaced with "_"')
+    print('\t-include_dunder: includes things prefaced with "__"')
+    print('\t-include_submodules: includes submodules')
+    print('\t-document_submodules: runs module documentation for submodules')
+    return 0
 
 
 def main_cli() -> int:
@@ -429,6 +463,9 @@ def main_cli() -> int:
     _module = ''
 
     for arg in argv[1:]:
+        if arg in ('--help', '-help', '-?', '-h', '?'):
+            return _cli_help(argv[0])
+
         if arg[:14] == '-exclude_name=':
             if 'exclude_names' not in _settings:
                 _settings['exclude_names'] = []
