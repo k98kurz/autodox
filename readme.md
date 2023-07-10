@@ -54,8 +54,8 @@ documentation function(s). The following are included.
 - `dox_a_function(function: Callable, options: dict = None) -> str` produces docs for a function
 - `dox_a_class(cls: type, options: dict = None) -> str` produces docs for a class
 
-The valid options will for each will be described below. Additionally, there is
-a system for setting up hooks that interact with the doc generation process to
+The valid options for each will be described below. Additionally, there is a
+system for setting up hooks that interact with the doc generation process to
 change the inputs or outputs, and that will be described below the options for
 the four `dox_a_{thing}` functions.
 
@@ -175,13 +175,6 @@ Permission to use, copy, modify, and/or distribute this software
 for any purpose with or without fee is hereby granted, provided
 that the above copyleft notice and this permission notice appear in
 all copies.
-
-Exceptions: this permission is not granted to Alphabet/Google, Amazon,
-Apple, Microsoft, Netflix, Meta/Facebook, Twitter, or Disney; nor is
-permission granted to any company that contracts to supply weapons or
-logistics to any national military; nor is permission granted to any
-national government or governmental agency; nor is permission granted to
-any employees, associates, or affiliates of these designated entities.
 
 THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
 WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
