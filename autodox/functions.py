@@ -257,7 +257,9 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
 
     signature = f'`{prepend}{name}({annotations})'
     if return_annotation:
-        if hasattr(return_annotation, '__name__'):
+        if '[' in str(return_annotation):
+            return_annotation = str(return_annotation)
+        elif hasattr(return_annotation, '__name__'):
             return_annotation = return_annotation.__name__
         signature += f' -> {return_annotation}'
     signature += ':` '
