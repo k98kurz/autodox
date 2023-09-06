@@ -241,7 +241,13 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
         defaults = [*function.__defaults__]
     else:
         defaults = []
-    offset = len(annotations) - len(defaults)
+
+    if hasattr(function, '__kwdefaults__') and function.__kwdefaults__:
+        kwdefaults = {**function.__kwdefaults__}
+    else:
+        kwdefaults = {}
+
+    offset = len(annotations) - len(defaults) - len(kwdefaults)
     if offset < 0:
         offset = 0
 
@@ -249,8 +255,31 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
         for i in range(len(defaults)):
             if defaults[i] == '':
                 annotations[i+offset] += f" = ''"
+            elif type(defaults[i]) is str:
+                annotations[i+offset] += f" = '{defaults[i]}'"
             else:
                 annotations[i+offset] += f' = {defaults[i]}'
+
+    kwannotations, indices = [], []
+    if annotations and kwdefaults:
+        for k, v in kwdefaults.items():
+            if k in [a.split(':')[0] for a in annotations]:
+                i = [a.split(':')[0] for a in annotations].index(k)
+                indices.append(i)
+                if type(v) is str:
+                    kwannotations.append(annotations[i] + f" = '{v}'")
+                else:
+                    kwannotations.append(annotations[i] + f" = {v}")
+
+    indices.sort()
+    while len(indices):
+        i = indices.pop()
+        del annotations[i]
+
+    if len(kwannotations):
+        annotations.append('/, *')
+        while len(kwannotations):
+            annotations.append(kwannotations.pop())
 
     annotations = ', '.join(annotations) or ''
     docstring = function.__doc__ if hasattr(function, '__doc__') else None

@@ -167,6 +167,18 @@ set_after_handler(Event.AFTER_LIST, world)
 ```
 
 
+## Testing
+
+The test suite for this library is currently limited to hooks (14 tests) and a
+few edge cases I encountered using the package (3 tests).
+
+To test, clone the repository and run the following:
+
+```
+python test_hooks.py
+python test_doxing.py
+```
+
 ## ISC License
 
 Copyleft (c) 2023 k98kurz
