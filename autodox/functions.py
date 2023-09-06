@@ -291,7 +291,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
         elif hasattr(return_annotation, '__name__'):
             return_annotation = return_annotation.__name__
         signature += f' -> {return_annotation}'
-    signature += ':` '
+    signature += ':` ' if format != 'header' else ':`'
 
     doc = ''
 
@@ -383,7 +383,7 @@ def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
     if publics:
         for name, value in publics.items():
             if isinstance(value, classmethod):
-                doc += dox_a_function(value, {**suboptions, 'format': format, 'prepend': '@classmethod '})
+                doc += dox_a_function(getattr(cls, name), {**suboptions, 'format': format, 'prepend': '@classmethod '})
             elif isinstance(cls.__dict__[name], staticmethod):
                 doc += dox_a_function(value, {**suboptions, 'format': format, 'prepend': '@staticmethod '})
             else:
@@ -433,6 +433,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
 
     if parent:
         parent = parent.__name__ if hasattr(parent, '__name__') else str(parent)
+    parent = None if parent == 'object' else parent
 
     for name, item in cls.__dict__.items():
         if name[:1] == '_' and not (include_private or include_dunder):
