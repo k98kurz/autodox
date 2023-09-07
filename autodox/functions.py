@@ -438,6 +438,8 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     for name, item in cls.__dict__.items():
         if name[:1] == '_' and not (include_private or include_dunder):
             continue
+        if name[:1] == '_' and include_dunder and not include_private and name[:2] != '__':
+            continue
         if name[:2] == '__' and not include_dunder:
             continue
         if name in exclude_names:

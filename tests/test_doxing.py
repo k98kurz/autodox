@@ -1,11 +1,9 @@
 from __future__ import annotations
 from context import functions
-from dataclasses import dataclass
 from typing import Any, Hashable
 import unittest
 
 
-@dataclass
 class ExampleClass:
     clock_uuid: bytes
     ts: Any
@@ -13,6 +11,14 @@ class ExampleClass:
 
     def pack(self) -> bytes:
         """Serialize to bytes."""
+        ...
+
+    def __repr__(self) -> str:
+        """Used for calls to repr."""
+        ...
+
+    def _private(self) -> None:
+        """Gets mangled by runtime."""
         ...
 
     @classmethod
@@ -101,6 +107,99 @@ Serialize to bytes.
 ### `@classmethod unpack(data: bytes, /, *, inject: dict = {}) -> ExampleClass:`
 
 Deserialize an ExampleClass.
+
+"""
+
+        assert doc == expected, \
+            f"expected {{\n{expected}}} but got {{\n{doc}}} diff {{{diff(expected, doc)}}}"
+
+    def test_with_private(self):
+        doc = functions.dox_a_class(ExampleClass, options={'include_private': True})
+        expected = """# `ExampleClass`
+
+## Annotations
+
+- clock_uuid: bytes
+- ts: Any
+- data: Hashable
+
+## Methods
+
+### `pack() -> bytes:`
+
+Serialize to bytes.
+
+### `@classmethod unpack(data: bytes, /, *, inject: dict = {}) -> ExampleClass:`
+
+Deserialize an ExampleClass.
+
+### `_private() -> None:`
+
+Gets mangled by runtime.
+
+"""
+
+        assert doc == expected, \
+            f"expected {{\n{expected}}} but got {{\n{doc}}} diff {{{diff(expected, doc)}}}"
+
+    def test_with_private_and_dunder(self):
+        options = {'include_private': True, 'include_dunder': True}
+        doc = functions.dox_a_class(ExampleClass, options)
+        expected = """# `ExampleClass`
+
+## Annotations
+
+- clock_uuid: bytes
+- ts: Any
+- data: Hashable
+
+## Methods
+
+### `pack() -> bytes:`
+
+Serialize to bytes.
+
+### `@classmethod unpack(data: bytes, /, *, inject: dict = {}) -> ExampleClass:`
+
+Deserialize an ExampleClass.
+
+### `_private() -> None:`
+
+Gets mangled by runtime.
+
+### `__repr__() -> str:`
+
+Used for calls to repr.
+
+"""
+
+        assert doc == expected, \
+            f"expected {{\n{expected}}} but got {{\n{doc}}} diff {{{diff(expected, doc)}}}"
+
+    def test_with_dunder_and_without_private(self):
+        options = {'include_dunder': True}
+        doc = functions.dox_a_class(ExampleClass, options)
+        expected = """# `ExampleClass`
+
+## Annotations
+
+- clock_uuid: bytes
+- ts: Any
+- data: Hashable
+
+## Methods
+
+### `pack() -> bytes:`
+
+Serialize to bytes.
+
+### `@classmethod unpack(data: bytes, /, *, inject: dict = {}) -> ExampleClass:`
+
+Deserialize an ExampleClass.
+
+### `__repr__() -> str:`
+
+Used for calls to repr.
 
 """
 
