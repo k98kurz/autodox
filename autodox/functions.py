@@ -253,10 +253,10 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
 
     if annotations and defaults:
         for i in range(len(defaults)):
-            if defaults[i] == '':
-                annotations[i+offset] += f" = ''"
-            elif type(defaults[i]) is str:
+            if type(defaults[i]) is str:
                 annotations[i+offset] += f" = '{defaults[i]}'"
+            elif type(defaults[i]) is type:
+                annotations[i+offset] += f' = {defaults[i].__name__}'
             else:
                 annotations[i+offset] += f' = {defaults[i]}'
 
@@ -268,6 +268,8 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
                 indices.append(i)
                 if type(v) is str:
                     kwannotations.append(annotations[i] + f" = '{v}'")
+                elif type(v) is type:
+                    kwannotations.append(annotations[i] + f" = {v.__name__}")
                 else:
                     kwannotations.append(annotations[i] + f" = {v}")
 
@@ -489,16 +491,15 @@ def _cli_help(name: str) -> int:
     return 0
 
 
-def main_cli() -> int:
+def invoke_cli(args: list[str]) -> int:
     """Entry point for pip installed wrapper function to invoke via CLI."""
     from importlib import import_module
-    from sys import argv
     _settings = {}
     _module = ''
 
-    for arg in argv[1:]:
+    for arg in args[1:]:
         if arg in ('--help', '-help', '-?', '-h', '?'):
-            return _cli_help(argv[0])
+            return _cli_help(args[0])
 
         if arg[:14] == '-exclude_name=':
             if 'exclude_names' not in _settings:
@@ -543,3 +544,8 @@ def main_cli() -> int:
 
     print(dox_a_module(_module, _settings))
     return 0
+
+
+def main_cli() -> int:
+    from sys import argv
+    return invoke_cli(argv)

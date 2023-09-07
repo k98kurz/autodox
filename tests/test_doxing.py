@@ -66,6 +66,26 @@ class TestDoxAFunction(unittest.TestCase):
             " Does a thing,\nreturns some stuff.\n"
         assert doc == expected, f"expected {{\n{expected}}} but got {{\n{doc}}}"
 
+    def test_annotations_with_empty_str_default(self):
+        def fn_with_defaults(arg1: int, arg2: str = '') -> bool:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_defaults)
+        expected = "- `fn_with_defaults(arg1: int, arg2: str = '') -> bool:`"+\
+            " Does a thing, returns\nsome stuff.\n"
+        assert doc == expected, f"expected {{\n{expected}}} but got {{\n{doc}}}"
+
+    def test_annotations_with_type_default(self):
+        def fn_with_defaults(arg1: int, arg2: type = ExampleClass) -> bool:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_defaults)
+        expected = "- `fn_with_defaults(arg1: int, arg2: type = ExampleClass) -> bool:`"+\
+            " Does a\nthing, returns some stuff.\n"
+        assert doc == expected, f"expected {{\n{expected}}} but got {{\n{doc}}}"
+
     def test_annotations_with_kwdefaults(self):
         def fn_with_defaults(arg1: int, /, *, arg2: str = 'okay') -> bool:
             """Does a thing, returns some stuff."""
@@ -74,6 +94,16 @@ class TestDoxAFunction(unittest.TestCase):
         doc = functions.dox_a_function(fn_with_defaults)
         expected = "- `fn_with_defaults(arg1: int, /, *, arg2: str = 'okay') -> bool:`"+\
             " Does a thing,\nreturns some stuff.\n"
+        assert doc == expected, f"expected {{\n{expected}}} but got {{\n{doc}}}"
+
+    def test_annotations_with_type_kwdefault(self):
+        def fn_with_defaults(arg1: int, /, *, arg2: type = ExampleClass) -> bool:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_defaults)
+        expected = "- `fn_with_defaults(arg1: int, /, *, arg2: type = ExampleClass) -> bool:`"+\
+            " Does a\nthing, returns some stuff.\n"
         assert doc == expected, f"expected {{\n{expected}}} but got {{\n{doc}}}"
 
     def test_annotations_with_defaults_and_kwdefaults(self):

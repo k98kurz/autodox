@@ -170,7 +170,7 @@ set_after_handler(Event.AFTER_LIST, world)
 ## Testing
 
 The test suite for this library is currently limited to hooks (14 tests) and a
-few edge cases I encountered using the package (7 tests).
+few edge cases I encountered using the package (10 tests).
 
 To test, clone the repository and run the following:
 
