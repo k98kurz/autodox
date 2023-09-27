@@ -5,6 +5,7 @@ import unittest
 
 
 class ExampleClass:
+    """An example class to document."""
     clock_uuid: bytes
     ts: Any
     data: Hashable
@@ -122,6 +123,8 @@ class TestDoxAClass(unittest.TestCase):
         doc = functions.dox_a_class(ExampleClass)
         expected = """# `ExampleClass`
 
+An example class to document.
+
 ## Annotations
 
 - clock_uuid: bytes
@@ -146,6 +149,8 @@ Deserialize an ExampleClass.
     def test_with_private(self):
         doc = functions.dox_a_class(ExampleClass, options={'include_private': True})
         expected = """# `ExampleClass`
+
+An example class to document.
 
 ## Annotations
 
@@ -176,6 +181,8 @@ Gets mangled by runtime.
         options = {'include_private': True, 'include_dunder': True}
         doc = functions.dox_a_class(ExampleClass, options)
         expected = """# `ExampleClass`
+
+An example class to document.
 
 ## Annotations
 
@@ -210,6 +217,8 @@ Used for calls to repr.
         options = {'include_dunder': True}
         doc = functions.dox_a_class(ExampleClass, options)
         expected = """# `ExampleClass`
+
+An example class to document.
 
 ## Annotations
 

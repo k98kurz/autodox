@@ -458,6 +458,10 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         return ''
     doc = _header(f'`{name}({parent})`', header_level) if parent else _header(f'`{name}`', header_level)
 
+    docstring = cls.__doc__ if hasattr(cls, '__doc__') else None
+    if docstring:
+        doc += _paragraph(docstring)
+
     if annotations:
         doc += _header('Annotations', header_level + 1)
         for name, value in annotations.items():
