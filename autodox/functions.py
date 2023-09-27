@@ -337,21 +337,21 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
     if publics:
         for name, value in publics.items():
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{name} - {value.__doc__}')
+                doc += _list(f'{name}: {value.__doc__}')
             else:
                 doc += _list(name)
 
     if privates:
         for name, value in privates.items():
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{name} - {value.__doc__}')
+                doc += _list(f'{name}: {value.__doc__}')
             else:
                 doc += _list(name)
 
     if dunders:
         for name, value in dunders.items():
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{name} - {value.__doc__}')
+                doc += _list(f'{name}: {value.__doc__}')
             else:
                 doc += _list(name)
 
@@ -470,7 +470,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
 
     if properties:
         doc += _header('Properties', header_level + 1)
-        doc += _dox_properties(properties, header_level)
+        doc += _dox_properties(properties, header_level) + '\n'
 
     if methods:
         doc += _header('Methods', header_level + 1)

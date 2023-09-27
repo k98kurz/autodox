@@ -10,6 +10,11 @@ class ExampleClass:
     ts: Any
     data: Hashable
 
+    @property
+    def thing(self) -> Any:
+        """Some property."""
+        ...
+
     def pack(self) -> bytes:
         """Serialize to bytes."""
         ...
@@ -131,6 +136,10 @@ An example class to document.
 - ts: Any
 - data: Hashable
 
+## Properties
+
+- thing: Some property.
+
 ## Methods
 
 ### `pack() -> bytes:`
@@ -157,6 +166,10 @@ An example class to document.
 - clock_uuid: bytes
 - ts: Any
 - data: Hashable
+
+## Properties
+
+- thing: Some property.
 
 ## Methods
 
@@ -189,6 +202,10 @@ An example class to document.
 - clock_uuid: bytes
 - ts: Any
 - data: Hashable
+
+## Properties
+
+- thing: Some property.
 
 ## Methods
 
@@ -225,6 +242,10 @@ An example class to document.
 - clock_uuid: bytes
 - ts: Any
 - data: Hashable
+
+## Properties
+
+- thing: Some property.
 
 ## Methods
 
