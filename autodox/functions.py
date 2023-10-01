@@ -210,11 +210,11 @@ def dox_a_value(value: Any, options: dict = {}) -> str:
 
     match format:
         case 'header':
-            doc = _header(f'{name}: {type_str}', header_level)
+            doc = _header(f'`{name}`: {type_str}', header_level)
         case 'paragraph':
-            doc = _paragraph(f'{name}: {type_str}')
+            doc = _paragraph(f'`{name}`: {type_str}')
         case _:
-            doc = _list(f'{name}: {type_str}')
+            doc = _list(f'`{name}`: {type_str}')
 
     return _invoke_handler(Event.AFTER_VALUE, doc)
 
