@@ -19,9 +19,17 @@ class Event(Enum):
 
 
 _handlers = {}
+_debug_level = 0
+
+
+def _debug(level = 1, *args):
+    """Print a debug statement if enabled."""
+    if _debug_level >= level:
+        print(*args)
 
 
 def _set_handler(event: Event, function: Callable) -> None:
+    _debug(3, '_set_handler(', event, function, ')')
     """Set a handler for a specific event."""
     if not callable(function):
         raise TypeError('function must be callable')
@@ -35,6 +43,7 @@ def _set_handler(event: Event, function: Callable) -> None:
 
 
 def set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, dict]]) -> None:
+    _debug(3, 'set_before_handler(', event, function, ')')
     """Sets a handler for a BEFORE_ event."""
     if type(event) is not Event:
         raise TypeError('event must be Event')
@@ -45,6 +54,7 @@ def set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, 
 
 
 def set_after_handler(event: Event, function: Callable[[str], str]) -> None:
+    _debug(3, 'set_after_handler(', event, ')')
     """Sets a handler for an AFTER_ event."""
     if type(event) is not Event:
         raise TypeError('event must be Event')
@@ -55,6 +65,7 @@ def set_after_handler(event: Event, function: Callable[[str], str]) -> None:
 
 
 def unset_handler(event: Event) -> None:
+    _debug(3, 'unset_handler(', event, ')')
     """Unset an event handling handler."""
     if type(event) is not Event:
         raise TypeError('event must be Event')
@@ -63,6 +74,7 @@ def unset_handler(event: Event) -> None:
 
 
 def _invoke_handler(event: Event, *args) -> None:
+    _debug(3, '_invoke_handler(', event, ')')
     """Invokes the handler for the event if set, otherwise return the
         parameters.
     """
@@ -73,6 +85,7 @@ def _invoke_handler(event: Event, *args) -> None:
 
 
 def _header(line: str, header_level: int = 0) -> str:
+    _debug(2, '_header(', line, header_level, ')')
     """Takes a line and returns it formatted as a header with the proper
         number of hashtags for the given header_level.
     """
@@ -81,10 +94,12 @@ def _header(line: str, header_level: int = 0) -> str:
 
 
 def _paragraph(docstring: str) -> str:
+    _debug(2, '_paragraph(', docstring, ')')
     """Takes a docstring, tokenizes it, and returns a str formatted to
         72 chars or fewer per line without splitting tokens.
     """
     def make_line(tokens: list[str]) -> tuple[str, list[str]]:
+        # _debug(2, 'make_line(', tokens, ')')
         line = ''
         while len(tokens) and (len(line) + len(tokens[0]) <= 80 or line.count('`') == 1):
             line += tokens[0] + ' '
@@ -103,12 +118,14 @@ def _paragraph(docstring: str) -> str:
 
 
 def _list(line: str) -> str:
+    _debug(2, '_list(', line, ')')
     """Takes a line and returns a formatted list item."""
     doc = _paragraph(f'- {line}')[:-1]
     return _invoke_handler(Event.AFTER_LIST, doc)
 
 
 def dox_a_module(module: ModuleType, options: dict = {}) -> str:
+    _debug(1, 'dox_a_module(', module.__name__, options, ')')
     """Iterates over a module, collects information about its parts, and
         returns a str containing markdown documentation generated from
         types, annotations, and docstrings.
@@ -195,6 +212,7 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
 
 
 def dox_a_value(value: Any, options: dict = {}) -> str:
+    _debug(1, 'dox_a_value(', value, options, ')')
     """Collects some information about a value and returns it formatted
         as specified in the options or as a list.
     """
@@ -220,6 +238,7 @@ def dox_a_value(value: Any, options: dict = {}) -> str:
 
 
 def dox_a_function(function: Callable, options: dict = {}) -> str:
+    _debug(1, 'dox_a_function(', function.__name__, options, ')')
     """Collects some information about a function and returns it
         formatted as specified in the options or as a list.
     """
@@ -316,6 +335,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
 
 
 def _dox_properties(properties: dict, header_level: int = 0) -> str:
+    _debug(1, '_dox_properties(', properties, header_level, ')')
     """Format properties for a class."""
     doc = ''
     dunders = {
@@ -359,6 +379,7 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
 
 
 def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
+    _debug(1, '_dox_methods(', cls.__name__, methods, options, ')')
     """Format a collection of methods/functions."""
     header_level = options['header_level'] if 'header_level' in options else 0
     header_level += 1
@@ -402,17 +423,19 @@ def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
     return doc
 
 
-def _get_all_annocations(cls: type) -> dict:
+def _get_all_annotations(cls: type) -> dict:
+    _debug(1, '_get_all_annotations(', cls, ')')
     """Collects all annotations from a class hierarchy."""
     annotations = cls.__annotations__ if hasattr(cls, '__annotations__') else {}
     parent = cls.__base__ if hasattr(cls, '__base__') else None
     if parent:
         if hasattr(parent, '__annotations__'):
-            annotations = {**_get_all_annocations(parent.__annotations__), **annotations}
+            annotations = {**_get_all_annotations(parent), **annotations}
     return annotations
 
 
 def dox_a_class(cls: type, options: dict = {}) -> str:
+    _debug(1, 'dox_a_class(', cls.__name__, options, ')')
     """Collects some information about a class and returns a formatted
         str. Any names specified in options['exclude_names'] and any
         types specified in options['exclude_types'] will be excluded.
@@ -431,7 +454,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
 
     properties = {}
     methods = {}
-    annotations = _get_all_annocations(cls)
+    annotations = _get_all_annotations(cls)
 
     if parent:
         parent = parent.__name__ if hasattr(parent, '__name__') else str(parent)
@@ -492,6 +515,10 @@ def _cli_help(name: str) -> int:
     print('\t-include_dunder: includes things prefaced with "__"')
     print('\t-include_submodules: includes submodules')
     print('\t-document_submodules: runs module documentation for submodules')
+    print('\t-debug: increases level of debug statements printed; starts at 0')
+    print('\t\tand increases once for each time this flag is passed; level 1')
+    print('\t\tprints out the trace for dox_{thing} calls; level 2 includes')
+    print('\t\tformatting functions; level 3 includes hooks functions')
     return 0
 
 
@@ -531,6 +558,9 @@ def invoke_cli(args: list[str]) -> int:
             _settings['include_submodules'] = True
         elif arg == '-document_submodules':
             _settings['document_submodules'] = True
+        elif arg == '-debug':
+            global _debug_level
+            _debug_level += 1
         elif arg[0] == '-':
             print(f'unrecognized option: {arg}')
             return 1
