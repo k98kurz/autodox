@@ -101,7 +101,9 @@ def _paragraph(docstring: str) -> str:
     def make_line(tokens: list[str]) -> tuple[str, list[str]]:
         _debug(2, 'make_line(', tokens, ')')
         line = ''
-        while len(tokens) and (len(line) + len(tokens[0]) <= 80 or line.count('`') == 1):
+        while len(tokens) and (
+            len(line) + len(tokens[0]) <= 80 or line.count('`') == 1
+        ) or (len(line) == 0 and len(tokens[0]) > 80):
             line += tokens[0] + ' '
             tokens = tokens[1:]
         return (line[:-1], tokens)
