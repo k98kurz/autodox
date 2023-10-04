@@ -99,7 +99,7 @@ def _paragraph(docstring: str) -> str:
         72 chars or fewer per line without splitting tokens.
     """
     def make_line(tokens: list[str]) -> tuple[str, list[str]]:
-        # _debug(2, 'make_line(', tokens, ')')
+        _debug(2, 'make_line(', tokens, ')')
         line = ''
         while len(tokens) and (len(line) + len(tokens[0]) <= 80 or line.count('`') == 1):
             line += tokens[0] + ' '
@@ -428,9 +428,8 @@ def _get_all_annotations(cls: type) -> dict:
     """Collects all annotations from a class hierarchy."""
     annotations = cls.__annotations__ if hasattr(cls, '__annotations__') else {}
     parent = cls.__base__ if hasattr(cls, '__base__') else None
-    if parent:
-        if hasattr(parent, '__annotations__'):
-            annotations = {**_get_all_annotations(parent), **annotations}
+    if parent and hasattr(parent, '__annotations__'):
+        annotations = {**_get_all_annotations(parent), **annotations}
     return annotations
 
 
@@ -449,6 +448,10 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
     suboptions = {**options, 'header_level': header_level + 1}
+
+    name = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
+    if name in exclude_names:
+        return ''
 
     parent = cls.__base__ if hasattr(cls, '__base__') else None
 
@@ -476,9 +479,6 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         if type(item) is property:
             properties[name] = item
 
-    name = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
-    if name in exclude_names:
-        return ''
     doc = _header(f'`{name}({parent})`', header_level) if parent else _header(f'`{name}`', header_level)
 
     docstring = cls.__doc__ if hasattr(cls, '__doc__') else None
