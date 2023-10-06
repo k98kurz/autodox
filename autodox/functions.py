@@ -29,8 +29,8 @@ def _debug(level = 1, *args):
 
 
 def _set_handler(event: Event, function: Callable) -> None:
-    _debug(3, '_set_handler(', event, function, ')')
     """Set a handler for a specific event."""
+    _debug(3, '_set_handler(', event, function, ')')
     if not callable(function):
         raise TypeError('function must be callable')
 
@@ -43,8 +43,8 @@ def _set_handler(event: Event, function: Callable) -> None:
 
 
 def set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, dict]]) -> None:
-    _debug(3, 'set_before_handler(', event, function, ')')
     """Sets a handler for a BEFORE_ event."""
+    _debug(3, 'set_before_handler(', event, function, ')')
     if type(event) is not Event:
         raise TypeError('event must be Event')
     if 'BEFORE_' not in event.name:
@@ -54,8 +54,8 @@ def set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, 
 
 
 def set_after_handler(event: Event, function: Callable[[str], str]) -> None:
-    _debug(3, 'set_after_handler(', event, ')')
     """Sets a handler for an AFTER_ event."""
+    _debug(3, 'set_after_handler(', event, ')')
     if type(event) is not Event:
         raise TypeError('event must be Event')
     if 'AFTER_' not in event.name:
@@ -65,8 +65,8 @@ def set_after_handler(event: Event, function: Callable[[str], str]) -> None:
 
 
 def unset_handler(event: Event) -> None:
-    _debug(3, 'unset_handler(', event, ')')
     """Unset an event handling handler."""
+    _debug(3, 'unset_handler(', event, ')')
     if type(event) is not Event:
         raise TypeError('event must be Event')
     if event.name in _handlers:
@@ -74,10 +74,10 @@ def unset_handler(event: Event) -> None:
 
 
 def _invoke_handler(event: Event, *args) -> None:
-    _debug(3, '_invoke_handler(', event, ')')
     """Invokes the handler for the event if set, otherwise return the
         parameters.
     """
+    _debug(3, '_invoke_handler(', event, ')')
     if event.name in _handlers:
         val = _handlers[event.name](*args)
         return val[0] if len(val) == 1 else val
@@ -85,19 +85,19 @@ def _invoke_handler(event: Event, *args) -> None:
 
 
 def _header(line: str, header_level: int = 0) -> str:
-    _debug(2, '_header(', line, header_level, ')')
     """Takes a line and returns it formatted as a header with the proper
         number of hashtags for the given header_level.
     """
+    _debug(2, '_header(', line, header_level, ')')
     doc = ''.join(['#' for _ in range(header_level+1)]) + f' {line}\n\n'
     return _invoke_handler(Event.AFTER_HEADER, doc)
 
 
 def _paragraph(docstring: str) -> str:
-    _debug(2, '_paragraph(', docstring, ')')
     """Takes a docstring, tokenizes it, and returns a str formatted to
         72 chars or fewer per line without splitting tokens.
     """
+    _debug(2, '_paragraph(', docstring, ')')
     def make_line(tokens: list[str]) -> tuple[str, list[str]]:
         _debug(2, 'make_line(', tokens, ')')
         line = ''
@@ -120,18 +120,18 @@ def _paragraph(docstring: str) -> str:
 
 
 def _list(line: str) -> str:
-    _debug(2, '_list(', line, ')')
     """Takes a line and returns a formatted list item."""
+    _debug(2, '_list(', line, ')')
     doc = _paragraph(f'- {line}')[:-1]
     return _invoke_handler(Event.AFTER_LIST, doc)
 
 
 def dox_a_module(module: ModuleType, options: dict = {}) -> str:
-    _debug(1, 'dox_a_module(', module.__name__, options, ')')
     """Iterates over a module, collects information about its parts, and
         returns a str containing markdown documentation generated from
         types, annotations, and docstrings.
     """
+    _debug(1, 'dox_a_module(', module.__name__, options, ')')
     module, options = _invoke_handler(Event.BEFORE_MODULE, module, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     exclude_types = options['exclude_types'] if 'exclude_types' in options else []
@@ -214,10 +214,10 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
 
 
 def dox_a_value(value: Any, options: dict = {}) -> str:
-    _debug(1, 'dox_a_value(', value, options, ')')
     """Collects some information about a value and returns it formatted
         as specified in the options or as a list.
     """
+    _debug(1, 'dox_a_value(', value, options, ')')
     value, options = _invoke_handler(Event.BEFORE_VALUE, value, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
@@ -240,10 +240,10 @@ def dox_a_value(value: Any, options: dict = {}) -> str:
 
 
 def dox_a_function(function: Callable, options: dict = {}) -> str:
-    _debug(1, 'dox_a_function(', function.__name__, options, ')')
     """Collects some information about a function and returns it
         formatted as specified in the options or as a list.
     """
+    _debug(1, 'dox_a_function(', function.__name__, options, ')')
     function, options = _invoke_handler(Event.BEFORE_FUNCTION, function, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
@@ -337,8 +337,8 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
 
 
 def _dox_properties(properties: dict, header_level: int = 0) -> str:
-    _debug(1, '_dox_properties(', properties, header_level, ')')
     """Format properties for a class."""
+    _debug(1, '_dox_properties(', properties, header_level, ')')
     doc = ''
     dunders = {
         name: value
@@ -381,8 +381,8 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
 
 
 def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
-    _debug(1, '_dox_methods(', cls.__name__, methods, options, ')')
     """Format a collection of methods/functions."""
+    _debug(1, '_dox_methods(', cls.__name__, methods, options, ')')
     header_level = options['header_level'] if 'header_level' in options else 0
     header_level += 1
     suboptions = {**options, 'header_level': header_level}
@@ -426,8 +426,8 @@ def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
 
 
 def _get_all_annotations(cls: type) -> dict:
-    _debug(1, '_get_all_annotations(', cls, ')')
     """Collects all annotations from a class hierarchy."""
+    _debug(1, '_get_all_annotations(', cls, ')')
     annotations = cls.__annotations__ if hasattr(cls, '__annotations__') else {}
     parent = cls.__base__ if hasattr(cls, '__base__') else None
     if parent and hasattr(parent, '__annotations__'):
@@ -436,7 +436,6 @@ def _get_all_annotations(cls: type) -> dict:
 
 
 def dox_a_class(cls: type, options: dict = {}) -> str:
-    _debug(1, 'dox_a_class(', cls.__name__, options, ')')
     """Collects some information about a class and returns a formatted
         str. Any names specified in options['exclude_names'] and any
         types specified in options['exclude_types'] will be excluded.
@@ -444,6 +443,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         options['include_private'] or options['include_dunder'] are
         specified, respectively.
     """
+    _debug(1, 'dox_a_class(', cls.__name__, options, ')')
     cls, options = _invoke_handler(Event.BEFORE_CLASS, cls, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0
