@@ -451,8 +451,8 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     include_dunder = 'include_dunder' in options
     suboptions = {**options, 'header_level': header_level + 1}
 
-    name = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
-    if name in exclude_names:
+    classname = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
+    if classname in exclude_names:
         return ''
 
     parent = cls.__base__ if hasattr(cls, '__base__') else None
@@ -481,7 +481,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         if type(item) is property:
             properties[name] = item
 
-    doc = _header(f'`{name}({parent})`', header_level) if parent else _header(f'`{name}`', header_level)
+    doc = _header(f'`{classname}({parent})`', header_level) if parent else _header(f'`{classname}`', header_level)
 
     docstring = cls.__doc__ if hasattr(cls, '__doc__') else None
     if docstring:
