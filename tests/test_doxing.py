@@ -39,7 +39,8 @@ class ExampleClass:
 
 @runtime_checkable
 class ExampleInterface(Protocol):
-    def __init__(self, name: str = 'foobar') -> None:
+    @classmethod
+    def init(cls, name: str = 'foobar') -> ExampleInterface:
         """Should initialize."""
         ...
     def get_some_str(self) -> str:
@@ -299,8 +300,23 @@ Deserialize an ExampleClass.
 
 class TestDoxAProtocol(unittest.TestCase):
     def test_dox_a_protocol(self):
+        # discovered that the Protocol is designed to prevent documenting the init interface
+        # https://github.com/python/cpython/issues/110788
         observed = functions.dox_a_class(ExampleInterface)
-        print(f"\n{observed}")
+        expected = """# `ExampleInterface(Protocol)`
+
+## Methods
+
+### `@classmethod init(name: str = 'foobar') -> ExampleInterface:`
+
+Should initialize.
+
+### `get_some_str() -> str:`
+
+Should return a str.
+
+"""
+        assert observed == expected, f"expected\n{expected}\nbut observed\n{observed}"
 
 
 if __name__ == '__main__':

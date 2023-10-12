@@ -476,6 +476,10 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
             continue
 
         if type(item) in (MethodType, FunctionType, staticmethod, classmethod):
+            # ignoring Protocol __init__ method overridden with an empty method
+            # https://github.com/python/cpython/issues/110788
+            if name == '__init__' and item.__name__ == "_no_init_or_replace_init":
+                continue
             methods[name] = item
 
         if type(item) is property:
