@@ -1,6 +1,6 @@
 from __future__ import annotations
 from context import functions
-from typing import Any, Hashable
+from typing import Any, Hashable, Protocol, runtime_checkable
 import unittest
 
 
@@ -34,6 +34,16 @@ class ExampleClass:
     @classmethod
     def unpack(cls, data: bytes, /, *, inject: dict = {}) -> ExampleClass:
         """Deserialize an ExampleClass."""
+        ...
+
+
+@runtime_checkable
+class ExampleInterface(Protocol):
+    def __init__(self, name: str = 'foobar') -> None:
+        """Should initialize."""
+        ...
+    def get_some_str(self) -> str:
+        """Should return a str."""
         ...
 
 
@@ -285,6 +295,12 @@ Deserialize an ExampleClass.
 
         assert doc == expected, \
             f"expected {{\n{expected}}} but got {{\n{doc}}} diff {{{diff(expected, doc)}}}"
+
+
+class TestDoxAProtocol(unittest.TestCase):
+    def test_dox_a_protocol(self):
+        observed = functions.dox_a_class(ExampleInterface)
+        print(f"\n{observed}")
 
 
 if __name__ == '__main__':
