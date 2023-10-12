@@ -405,6 +405,10 @@ def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
         if name not in dunders and name not in privates
     }
 
+    if dunders:
+        for _, value in dunders.items():
+            doc += dox_a_function(value, {**suboptions, 'format': format})
+
     if publics:
         for name, value in publics.items():
             if isinstance(value, classmethod):
@@ -416,10 +420,6 @@ def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
 
     if privates:
         for _, value in privates.items():
-            doc += dox_a_function(value, {**suboptions, 'format': format})
-
-    if dunders:
-        for _, value in dunders.items():
             doc += dox_a_function(value, {**suboptions, 'format': format})
 
     return doc
@@ -466,11 +466,11 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     parent = None if parent == 'object' else parent
 
     for name, item in cls.__dict__.items():
-        if name[:1] == '_' and not (include_private or include_dunder):
+        if name[:1] == '_' and not (include_private or include_dunder) and name != '__init__':
             continue
         if name[:1] == '_' and include_dunder and not include_private and name[:2] != '__':
             continue
-        if name[:2] == '__' and not include_dunder:
+        if name[:2] == '__' and not include_dunder and name != '__init__':
             continue
         if name in exclude_names:
             continue

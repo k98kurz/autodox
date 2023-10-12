@@ -10,6 +10,10 @@ class ExampleClass:
     ts: Any
     data: Hashable
 
+    def __init__(self, clock_uuid: bytes, ts: Any, data: Hashable) -> None:
+        """The init method."""
+        ...
+
     @property
     def thing(self) -> Any:
         """Some property."""
@@ -142,6 +146,10 @@ An example class to document.
 
 ## Methods
 
+### `__init__(clock_uuid: bytes, ts: Any, data: Hashable) -> None:`
+
+The init method.
+
 ### `pack() -> bytes:`
 
 Serialize to bytes.
@@ -172,6 +180,10 @@ An example class to document.
 - thing: Some property.
 
 ## Methods
+
+### `__init__(clock_uuid: bytes, ts: Any, data: Hashable) -> None:`
+
+The init method.
 
 ### `pack() -> bytes:`
 
@@ -209,6 +221,14 @@ An example class to document.
 
 ## Methods
 
+### `__init__(clock_uuid: bytes, ts: Any, data: Hashable) -> None:`
+
+The init method.
+
+### `__repr__() -> str:`
+
+Used for calls to repr.
+
 ### `pack() -> bytes:`
 
 Serialize to bytes.
@@ -220,10 +240,6 @@ Deserialize an ExampleClass.
 ### `_private() -> None:`
 
 Gets mangled by runtime.
-
-### `__repr__() -> str:`
-
-Used for calls to repr.
 
 """
 
@@ -249,6 +265,14 @@ An example class to document.
 
 ## Methods
 
+### `__init__(clock_uuid: bytes, ts: Any, data: Hashable) -> None:`
+
+The init method.
+
+### `__repr__() -> str:`
+
+Used for calls to repr.
+
 ### `pack() -> bytes:`
 
 Serialize to bytes.
@@ -256,10 +280,6 @@ Serialize to bytes.
 ### `@classmethod unpack(data: bytes, /, *, inject: dict = {}) -> ExampleClass:`
 
 Deserialize an ExampleClass.
-
-### `__repr__() -> str:`
-
-Used for calls to repr.
 
 """
 
