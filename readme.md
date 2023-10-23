@@ -8,6 +8,7 @@ and docstrings.
 - [x] Code
 - [x] Docs
 - [x] Package published
+- [x] Denote async functions as such
 
 ## Usage
 
@@ -16,6 +17,12 @@ and docstrings.
 ```bash
 pip install autodox
 ```
+
+Note that Protocols do not support `__init__` methods before Python 3.11. To use
+`__init__` method signatures for Protocols in Python 3.10, use the
+`typing.Protocol` backport from the 3rd-party `typing_extensions` package.
+Otherwise, the `__init__` method signature will be overridden with an empty one
+named `_no_init_or_replace_init` and will be ignored by this tool.
 
 ### Document a module from CLI
 
@@ -33,6 +40,7 @@ The output can be configured with the following options:
 - `-function_format=format` - can be one of 'header', 'paragraph', or 'list'
 - `-method_format=format` - can be one of 'header', 'paragraph', or 'list'
 - `-value_format=format` - can be one of 'header', 'paragraph', or 'list'
+- `-line_length=number` - number of chars per line in paragraphs
 - `-include_private` to include things prefaced with '_'
 - `-include_dunder` to include things prefaced with '__'
 - `-include_submodules` to include submodules
@@ -171,7 +179,7 @@ set_after_handler(Event.AFTER_LIST, world)
 ## Testing
 
 The test suite for this library is currently limited to hooks (14 tests) and a
-few edge cases I encountered using the package (10 tests).
+few edge cases I encountered using the package (12 tests).
 
 To test, clone the repository and run the following:
 

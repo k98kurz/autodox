@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from inspect import iscoroutinefunction
 from types import ModuleType, MethodType, FunctionType
 from typing import Any, Callable
 
@@ -93,17 +94,18 @@ def _header(line: str, header_level: int = 0) -> str:
     return _invoke_handler(Event.AFTER_HEADER, doc)
 
 
-def _paragraph(docstring: str) -> str:
+def _paragraph(docstring: str, options: dict = {}) -> str:
     """Takes a docstring, tokenizes it, and returns a str formatted to
         72 chars or fewer per line without splitting tokens.
     """
     _debug(2, '_paragraph(', docstring, ')')
+    line_length = options.get('line_length', 80)
     def make_line(tokens: list[str]) -> tuple[str, list[str]]:
         _debug(2, 'make_line(', tokens, ')')
         line = ''
         while len(tokens) and (
-            len(line) + len(tokens[0]) <= 80 or line.count('`') == 1
-        ) or (len(line) == 0 and len(tokens[0]) > 80):
+            len(line) + len(tokens[0]) <= line_length or line.count('`') == 1
+        ) or (len(line) == 0 and len(tokens[0]) > line_length):
             line += tokens[0] + ' '
             tokens = tokens[1:]
         return (line[:-1], tokens)
@@ -119,10 +121,10 @@ def _paragraph(docstring: str) -> str:
     return _invoke_handler(Event.AFTER_PARAGRAPH, doc)
 
 
-def _list(line: str) -> str:
+def _list(line: str, options: dict = {}) -> str:
     """Takes a line and returns a formatted list item."""
     _debug(2, '_list(', line, ')')
-    doc = _paragraph(f'- {line}')[:-1]
+    doc = _paragraph(f'- {line}', options)[:-1]
     return _invoke_handler(Event.AFTER_LIST, doc)
 
 
@@ -186,7 +188,7 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
     doc = _header(module.__name__, header_level)
 
     if hasattr(module, '__doc__') and module.__doc__:
-        doc += _paragraph(module.__doc__)
+        doc += _paragraph(module.__doc__, options)
 
     if len(classes):
         doc += _header('Classes', header_level + 1)
@@ -232,7 +234,7 @@ def dox_a_value(value: Any, options: dict = {}) -> str:
         case 'header':
             doc = _header(f'`{name}`: {type_str}', header_level)
         case 'paragraph':
-            doc = _paragraph(f'`{name}`: {type_str}')
+            doc = _paragraph(f'`{name}`: {type_str}', options)
         case _:
             doc = _list(f'`{name}`: {type_str}')
 
@@ -248,6 +250,9 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
     prepend = options['prepend'] if 'prepend' in options else ''
+
+    if iscoroutinefunction(function):
+        prepend = f'{prepend} async ' if prepend else 'async '
 
     name = function.__name__ if hasattr(function, '__name__') else '{unknown/unnamed}'
     annotations = function.__annotations__ if hasattr(function, '__annotations__') else {}
@@ -322,11 +327,11 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
         case 'header':
             doc = _header(signature, header_level)
             if docstring:
-                doc += _paragraph(docstring)
+                doc += _paragraph(docstring, options)
         case 'paragraph':
-            doc = _paragraph(signature)
+            doc = _paragraph(signature, options)
             if docstring:
-                doc += _paragraph(docstring)
+                doc += _paragraph(docstring, options)
         case _:
             doc = signature
             if docstring:
@@ -489,7 +494,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
 
     docstring = cls.__doc__ if hasattr(cls, '__doc__') else None
     if docstring:
-        doc += _paragraph(docstring)
+        doc += _paragraph(docstring, options)
 
     if annotations:
         doc += _header('Annotations', header_level + 1)
@@ -521,6 +526,7 @@ def _cli_help(name: str) -> int:
     print('\t-include_dunder: includes things prefaced with "__"')
     print('\t-include_submodules: includes submodules')
     print('\t-document_submodules: runs module documentation for submodules')
+    print('\t-line_length=int: number of chars per line in paragraphs')
     print('\t-debug: increases level of debug statements printed; starts at 0')
     print('\t\tand increases once for each time this flag is passed; level 1')
     print('\t\tprints out the trace for dox_{thing} calls; level 2 includes')
@@ -556,6 +562,8 @@ def invoke_cli(args: list[str]) -> int:
             _settings['method_format'] = arg[15:]
         elif arg[:14] == '-value_format=':
             _settings['value_format'] = arg[14:]
+        elif arg[:12] == '-line_length':
+            _settings['line_length'] = int(arg[12:])
         elif arg == '-include_private':
             _settings['include_private'] = True
         elif arg == '-include_dunder':

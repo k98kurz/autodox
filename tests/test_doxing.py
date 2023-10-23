@@ -36,6 +36,10 @@ class ExampleClass:
         """Deserialize an ExampleClass."""
         ...
 
+    async def some_async_method(self, data: str) -> bool:
+        """Example async method."""
+        ...
+
 
 @runtime_checkable
 class ExampleInterface(Protocol):
@@ -169,6 +173,10 @@ Serialize to bytes.
 
 Deserialize an ExampleClass.
 
+### `async some_async_method(data: str) -> bool:`
+
+Example async method.
+
 """
 
         assert doc == expected, \
@@ -203,6 +211,10 @@ Serialize to bytes.
 ### `@classmethod unpack(data: bytes, /, *, inject: dict = {}) -> ExampleClass:`
 
 Deserialize an ExampleClass.
+
+### `async some_async_method(data: str) -> bool:`
+
+Example async method.
 
 ### `_private() -> None:`
 
@@ -248,6 +260,10 @@ Serialize to bytes.
 
 Deserialize an ExampleClass.
 
+### `async some_async_method(data: str) -> bool:`
+
+Example async method.
+
 ### `_private() -> None:`
 
 Gets mangled by runtime.
@@ -292,6 +308,10 @@ Serialize to bytes.
 
 Deserialize an ExampleClass.
 
+### `async some_async_method(data: str) -> bool:`
+
+Example async method.
+
 """
 
         assert doc == expected, \
@@ -314,6 +334,60 @@ Should initialize.
 ### `get_some_str() -> str:`
 
 Should return a str.
+
+"""
+        assert observed == expected, f"expected\n{expected}\nbut observed\n{observed}"
+
+    def test_dox_a_protocol_with_long_line_length(self):
+        @runtime_checkable
+        class LongParagraphInterface(Protocol):
+            """Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+                sed do eiusmod tempor incididunt ut labore et dolore
+                magna aliqua. Ut enim ad minim veniam, quis nostrud
+                exercitation ullamco laboris nisi ut aliquip ex ea
+                commodo consequat. Duis aute irure dolor in
+                reprehenderit in voluptate velit esse cillum dolore eu
+                fugiat nulla pariatur. Excepteur sint occaecat cupidatat
+                non proident, sunt in culpa qui officia deserunt mollit
+                anim id est laborum.
+            """
+            ...
+
+        observed = functions.dox_a_class(LongParagraphInterface)
+        expected = """# `LongParagraphInterface(Protocol)`
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
+nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
+fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+culpa qui officia deserunt mollit anim id est laborum.
+
+"""
+        assert observed == expected, f"expected\n{expected}\nbut observed\n{observed}"
+
+        observed = functions.dox_a_class(LongParagraphInterface, {'line_length': 100})
+        expected = """# `LongParagraphInterface(Protocol)`
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore
+et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+culpa qui officia deserunt mollit anim id est laborum.
+
+"""
+        assert observed == expected, f"expected\n{expected}\nbut observed\n{observed}"
+
+        observed = functions.dox_a_class(LongParagraphInterface, {'line_length': 72})
+        expected = """# `LongParagraphInterface(Protocol)`
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
+commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
+velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
+occaecat cupidatat non proident, sunt in culpa qui officia deserunt
+mollit anim id est laborum.
 
 """
         assert observed == expected, f"expected\n{expected}\nbut observed\n{observed}"
