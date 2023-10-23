@@ -40,6 +40,11 @@ class ExampleClass:
         """Example async method."""
         ...
 
+    @classmethod
+    async def some_async_class_method(cls, data: str) -> bool:
+        """Example async class method."""
+        ...
+
 
 @runtime_checkable
 class ExampleInterface(Protocol):
@@ -177,6 +182,10 @@ Deserialize an ExampleClass.
 
 Example async method.
 
+### `@classmethod async some_async_class_method(data: str) -> bool:`
+
+Example async class method.
+
 """
 
         assert doc == expected, \
@@ -215,6 +224,10 @@ Deserialize an ExampleClass.
 ### `async some_async_method(data: str) -> bool:`
 
 Example async method.
+
+### `@classmethod async some_async_class_method(data: str) -> bool:`
+
+Example async class method.
 
 ### `_private() -> None:`
 
@@ -264,6 +277,10 @@ Deserialize an ExampleClass.
 
 Example async method.
 
+### `@classmethod async some_async_class_method(data: str) -> bool:`
+
+Example async class method.
+
 ### `_private() -> None:`
 
 Gets mangled by runtime.
@@ -311,6 +328,10 @@ Deserialize an ExampleClass.
 ### `async some_async_method(data: str) -> bool:`
 
 Example async method.
+
+### `@classmethod async some_async_class_method(data: str) -> bool:`
+
+Example async class method.
 
 """
 
