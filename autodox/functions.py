@@ -252,7 +252,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     prepend = options['prepend'] if 'prepend' in options else ''
 
     if iscoroutinefunction(function):
-        prepend = f'{prepend} async ' if prepend else 'async '
+        prepend = f'{prepend}async ' if prepend else 'async '
 
     name = function.__name__ if hasattr(function, '__name__') else '{unknown/unnamed}'
     annotations = function.__annotations__ if hasattr(function, '__annotations__') else {}
