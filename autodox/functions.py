@@ -133,7 +133,7 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
         returns a str containing markdown documentation generated from
         types, annotations, and docstrings.
     """
-    _debug(1, 'dox_a_module(', module.__name__, options, ')')
+    _debug(1, 'dox_a_module(', getattr(module, '__name__', '[unnamed]'), options, ')')
     module, options = _invoke_handler(Event.BEFORE_MODULE, module, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     exclude_types = options['exclude_types'] if 'exclude_types' in options else []
@@ -245,7 +245,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     """Collects some information about a function and returns it
         formatted as specified in the options or as a list.
     """
-    _debug(1, 'dox_a_function(', function.__name__, options, ')')
+    _debug(1, 'dox_a_function(', getattr(function, '__name__', '[unnamed function]'), options, ')')
     function, options = _invoke_handler(Event.BEFORE_FUNCTION, function, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
@@ -387,7 +387,7 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
 
 def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
     """Format a collection of methods/functions."""
-    _debug(1, '_dox_methods(', cls.__name__, methods, options, ')')
+    _debug(1, '_dox_methods(', getattr(cls, '__name__', '[unnamed class]'), methods, options, ')')
     header_level = options['header_level'] if 'header_level' in options else 0
     header_level += 1
     suboptions = {**options, 'header_level': header_level}
@@ -448,7 +448,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         options['include_private'] or options['include_dunder'] are
         specified, respectively.
     """
-    _debug(1, 'dox_a_class(', cls.__name__, options, ')')
+    _debug(1, 'dox_a_class(', getattr(cls, '__name__', '[unnamed class]'), options, ')')
     cls, options = _invoke_handler(Event.BEFORE_CLASS, cls, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0
