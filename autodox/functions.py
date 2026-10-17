@@ -1,8 +1,9 @@
+from __future__ import annotations
 from enum import Enum, auto
 from inspect import iscoroutinefunction
+from sys import argv
 from types import ModuleType, MethodType, FunctionType
 from typing import Any, Callable
-
 
 
 class Event(Enum):
@@ -23,7 +24,7 @@ _handlers = {}
 _debug_level = 0
 
 
-def _debug(level = 1, *args):
+def _debug(level: int = 1, *args):
     """Print a debug statement if enabled."""
     if _debug_level >= level:
         print(*args)
@@ -43,7 +44,9 @@ def _set_handler(event: Event, function: Callable) -> None:
         _handlers[event.name] = function
 
 
-def set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, dict]]) -> None:
+def set_before_handler(
+        event: Event, function: Callable[[Any, dict], tuple[Any, dict]]
+    ) -> None:
     """Sets a handler for a BEFORE_ event."""
     _debug(3, 'set_before_handler(', event, function, ')')
     if type(event) is not Event:
@@ -74,7 +77,7 @@ def unset_handler(event: Event) -> None:
         del _handlers[event.name]
 
 
-def _invoke_handler(event: Event, *args) -> None:
+def _invoke_handler(event: Event, *args) -> Any:
     """Invokes the handler for the event if set, otherwise return the
         parameters.
     """
@@ -104,8 +107,11 @@ def _paragraph(docstring: str, options: dict = {}) -> str:
         _debug(2, 'make_line(', tokens, ')')
         line = ''
         while len(tokens) and (
-            len(line) + len(tokens[0]) <= line_length or line.count('`') == 1
-        ) or (len(line) == 0 and len(tokens[0]) > line_length):
+                len(line) + len(tokens[0]) <= line_length
+                or line.count('`') == 1
+            ) or (
+                len(line) == 0 and len(tokens[0]) > line_length
+            ):
             line += tokens[0] + ' '
             tokens = tokens[1:]
         return (line[:-1], tokens)
@@ -133,12 +139,17 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
         returns a str containing markdown documentation generated from
         types, annotations, and docstrings.
     """
-    _debug(1, 'dox_a_module(', getattr(module, '__name__', '[unnamed]'), options, ')')
+    _debug(
+        1, 'dox_a_module(',
+        getattr(module, '__name__', '[unnamed]'), options, ')'
+    )
     module, options = _invoke_handler(Event.BEFORE_MODULE, module, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     exclude_types = options['exclude_types'] if 'exclude_types' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0
-    function_format = options['function_format'] if 'function_format' in options else 'header'
+    function_format = (
+        options['function_format'] if 'function_format' in options else 'header'
+    )
     value_format = options['value_format'] if 'value_format' in options else 'list'
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
@@ -245,7 +256,10 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     """Collects some information about a function and returns it
         formatted as specified in the options or as a list.
     """
-    _debug(1, 'dox_a_function(', getattr(function, '__name__', '[unnamed function]'), options, ')')
+    _debug(
+        1, 'dox_a_function(',
+        getattr(function, '__name__', '[unnamed function]'), options, ')'
+    )
     function, options = _invoke_handler(Event.BEFORE_FUNCTION, function, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
@@ -254,8 +268,12 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     if iscoroutinefunction(function):
         prepend = f'{prepend}async ' if prepend else 'async '
 
-    name = function.__name__ if hasattr(function, '__name__') else '{unknown/unnamed}'
-    annotations = function.__annotations__ if hasattr(function, '__annotations__') else {}
+    name = (
+        function.__name__ if hasattr(function, '__name__') else '{unknown/unnamed}'
+    )
+    annotations = (
+        function.__annotations__ if hasattr(function, '__annotations__') else {}
+    )
     return_annotation = annotations['return'] if 'return' in annotations else None
     annotations = [
         f'{key}: {value.__name__ if hasattr(value, "__name__") else str(value)}'
@@ -387,7 +405,10 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
 
 def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
     """Format a collection of methods/functions."""
-    _debug(1, '_dox_methods(', getattr(cls, '__name__', '[unnamed class]'), methods, options, ')')
+    _debug(
+        1, '_dox_methods(',
+        getattr(cls, '__name__', '[unnamed class]'), methods, options, ')'
+    )
     header_level = options['header_level'] if 'header_level' in options else 0
     header_level += 1
     suboptions = {**options, 'header_level': header_level}
@@ -417,9 +438,15 @@ def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
     if publics:
         for name, value in publics.items():
             if isinstance(value, classmethod):
-                doc += dox_a_function(getattr(cls, name), {**suboptions, 'format': format, 'prepend': '@classmethod '})
+                doc += dox_a_function(
+                    getattr(cls, name),
+                    {**suboptions, 'format': format, 'prepend': '@classmethod '}
+                )
             elif isinstance(cls.__dict__[name], staticmethod):
-                doc += dox_a_function(value, {**suboptions, 'format': format, 'prepend': '@staticmethod '})
+                doc += dox_a_function(
+                    value,
+                    {**suboptions, 'format': format, 'prepend': '@staticmethod '}
+                )
             else:
                 doc += dox_a_function(value, {**suboptions, 'format': format})
 
@@ -448,7 +475,10 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         options['include_private'] or options['include_dunder'] are
         specified, respectively.
     """
-    _debug(1, 'dox_a_class(', getattr(cls, '__name__', '[unnamed class]'), options, ')')
+    _debug(
+        1, 'dox_a_class(',
+        getattr(cls, '__name__', '[unnamed class]'), options, ')'
+    )
     cls, options = _invoke_handler(Event.BEFORE_CLASS, cls, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0
@@ -456,7 +486,9 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     include_dunder = 'include_dunder' in options
     suboptions = {**options, 'header_level': header_level + 1}
 
-    classname = cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
+    classname = (
+        cls.__name__ if hasattr(cls, '__name__') else '{unknown/unnamed class}'
+    )
     if classname in exclude_names:
         return ''
 
@@ -471,11 +503,21 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     parent = None if parent == 'object' else parent
 
     for name, item in cls.__dict__.items():
-        if name[:1] == '_' and not (include_private or include_dunder) and name != '__init__':
+        if  (   name[:1] == '_'
+                and not (include_private or include_dunder)
+                and name != '__init__'
+            ):
             continue
-        if name[:1] == '_' and include_dunder and not include_private and name[:2] != '__':
+        if  (   name[:1] == '_'
+                and include_dunder
+                and not include_private
+                and name[:2] != '__'
+            ):
             continue
-        if name[:2] == '__' and not include_dunder and name != '__init__':
+        if  (   name[:2] == '__'
+                and not include_dunder
+                and name != '__init__'
+            ):
             continue
         if name in exclude_names:
             continue
@@ -490,7 +532,9 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         if type(item) is property:
             properties[name] = item
 
-    doc = _header(f'`{classname}({parent})`', header_level) if parent else _header(f'`{classname}`', header_level)
+    doc = _header(
+        f'`{classname}({parent})`', header_level
+    ) if parent else _header(f'`{classname}`', header_level)
 
     docstring = cls.__doc__ if hasattr(cls, '__doc__') else None
     if docstring:
@@ -536,7 +580,7 @@ def _cli_help(name: str) -> int:
 
 def invoke_cli(args: list[str]) -> int:
     """Entry point for pip installed wrapper function to invoke via CLI."""
-    from importlib import import_module
+    from importlib import import_module # approved lazy import
     _settings = {}
     _module = ''
 
@@ -563,7 +607,7 @@ def invoke_cli(args: list[str]) -> int:
         elif arg[:14] == '-value_format=':
             _settings['value_format'] = arg[14:]
         elif arg[:12] == '-line_length':
-            _settings['line_length'] = int(arg[12:])
+            _settings['line_length'] = int(arg[13:])
         elif arg == '-include_private':
             _settings['include_private'] = True
         elif arg == '-include_dunder':
@@ -595,5 +639,4 @@ def invoke_cli(args: list[str]) -> int:
 
 
 def main_cli() -> int:
-    from sys import argv
     return invoke_cli(argv)

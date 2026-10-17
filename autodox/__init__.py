@@ -1,5 +1,6 @@
-"""Autodox is a package for generating documentation from code
-    annotations, types, and docstrings.
+"""
+Autodox is a package for generating documentation from code annotations,
+types, and docstrings.
 """
 
 

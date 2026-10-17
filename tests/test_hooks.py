@@ -1,3 +1,5 @@
+from __future__ import annotations
+from __future__ import annotations
 from autodox import functions
 from enum import Enum
 import unittest
@@ -57,16 +59,20 @@ class TestHooks(unittest.TestCase):
 
     def test_BEFORE_VALUE_event(self):
         signal = False
+
         def handle(*args):
             nonlocal signal
             signal = True
             return args
+
         _ = functions.dox_a_value(signal)
         assert not signal
+
         functions.set_before_handler(
             functions.Event.BEFORE_VALUE,
             handle
         )
+
         _ = functions.dox_a_value(signal)
         assert signal
 
@@ -82,16 +88,20 @@ class TestHooks(unittest.TestCase):
 
     def test_BEFORE_FUNCTION_event(self):
         signal = False
+
         def handle(*args):
             nonlocal signal
             signal = True
             return args
+
         _ = functions.dox_a_function(handle)
         assert not signal
+
         functions.set_before_handler(
             functions.Event.BEFORE_FUNCTION,
             handle
         )
+
         _ = functions.dox_a_function(handle)
         assert signal
 
@@ -107,16 +117,20 @@ class TestHooks(unittest.TestCase):
 
     def test_BEFORE_CLASS_event(self):
         signal = False
+
         def handle(*args):
             nonlocal signal
             signal = True
             return args
+
         _ = functions.dox_a_class(TestHooks)
         assert not signal
+
         functions.set_before_handler(
             functions.Event.BEFORE_CLASS,
             handle
         )
+
         _ = functions.dox_a_class(TestHooks)
         assert signal
 
@@ -131,16 +145,20 @@ class TestHooks(unittest.TestCase):
 
     def test_BEFORE_MODULE_event(self):
         signal = False
+
         def handle(*args):
             nonlocal signal
             signal = True
             return args
+
         _ = functions.dox_a_module(functions)
         assert not signal
+
         functions.set_before_handler(
             functions.Event.BEFORE_MODULE,
             handle
         )
+
         _ = functions.dox_a_module(functions)
         assert signal
 

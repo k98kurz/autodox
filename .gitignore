@@ -1,6 +1,8 @@
-venv/
-.vscode/
 __pycache__/
-*/__pycache__/
-dist/
+**/__pycache__
 build/
+dist/
+temp/
+venv*/
+**.sw?
+references/
