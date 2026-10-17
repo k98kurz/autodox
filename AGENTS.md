@@ -29,6 +29,7 @@ a human.
 - Code style guidelines are in docs/code_style.md. Read them before editing or
   reviewing code.
 - Use stdlib unittest, not pytest or any other test framework.
+- Run tests WITHOUT `tail`
 - Except for `with self.assertRaises(...)`, use bare `assert condition, context`
 
 # Memory

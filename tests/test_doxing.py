@@ -1,6 +1,7 @@
 from __future__ import annotations
 from autodox import functions
 from difflib import SequenceMatcher
+from types import ModuleType, FunctionType, MethodType
 from typing import Any, Hashable, Protocol, runtime_checkable
 import unittest
 
@@ -476,6 +477,190 @@ mollit anim id est laborum.
 
 """
 
+        assert observed == expected, (
+            f"expected\n{expected}\nbut observed\n{observed}"
+        )
+
+
+class TestAliases(unittest.TestCase):
+    def test_module_aliases_are_not_duplicated(self):
+        class DependencyError(Exception):
+            """Raised when a dependency cannot be resolved."""
+            ...
+
+        def resolve(name: str):
+            """Resolve a dependency."""
+            ...
+
+        module = ModuleType('repro_mod')
+        module.DependencyError = DependencyError
+        module.UsageError = DependencyError
+        module.resolve = resolve
+        module.resolve_alias = resolve
+
+        observed = functions.dox_a_module(module)
+        expected = """# repro_mod
+
+## Classes
+
+### `DependencyError(Exception)`
+
+Raised when a dependency cannot be resolved.
+
+### `UsageError = DependencyError`
+
+## Functions
+
+### `resolve(name: str):`
+
+Resolve a dependency.
+
+### `resolve_alias = resolve`
+
+"""
+
+        assert observed == expected, (
+            f"expected\n{expected}\nbut observed\n{observed} "
+            f"diff {{{diff(expected, observed)}}}"
+        )
+
+    def test_dox_alias_paragraph_format(self):
+        observed = functions._dox_alias('AliasFn', 'resolve', 0, 'paragraph')
+        expected = '`AliasFn = resolve`\n\n'
+
+        assert observed == expected, (
+            f"expected\n{expected}\nbut observed\n{observed}"
+        )
+
+    def test_imported_types_are_not_treated_as_aliases(self):
+        module = ModuleType('types_mod')
+        module.ModuleType = ModuleType
+        module.FunctionType = FunctionType
+        module.MethodType = MethodType
+
+        observed = functions.dox_a_module(module)
+        alias_lines = [
+            line for line in observed.splitlines()
+            if line.startswith('### `') and ' = ' in line
+        ]
+
+        assert alias_lines == [], observed
+
+    def test_method_aliases_are_not_duplicated(self):
+        class AliasedMethods:
+            """A class with method aliases."""
+
+            def foo(self) -> None:
+                """Do foo."""
+                ...
+
+            bar = foo
+
+            @classmethod
+            def cm(cls) -> None:
+                """Do cm."""
+                ...
+
+            cm_alias = cm
+
+            @staticmethod
+            def sm() -> None:
+                """Do sm."""
+                ...
+
+            sm_alias = sm
+
+        observed = functions.dox_a_class(AliasedMethods)
+
+        assert observed.count('### `foo() -> None:`') == 1, observed
+        assert '### `bar = foo`' in observed, observed
+        assert observed.count('### `@classmethod cm() -> None:`') == 1, observed
+        assert '### `cm_alias = cm`' in observed, observed
+        assert observed.count('### `@staticmethod sm() -> None:`') == 1, observed
+        assert '### `sm_alias = sm`' in observed, observed
+
+    def test_method_alias_to_private_target(self):
+        class C:
+            """C."""
+
+            def _foo(self) -> None:
+                """private foo."""
+                ...
+
+            bar = _foo
+
+        observed = functions.dox_a_class(C)
+        expected = """# `C`
+
+C.
+
+## Methods
+
+### `bar = _foo`
+
+"""
+        assert observed == expected, (
+            f"expected\n{expected}\nbut observed\n{observed}"
+        )
+
+        observed = functions.dox_a_class(C, {'include_private': True})
+        assert '### `bar = _foo`' in observed, observed
+        assert '### `_foo() -> None:`' in observed, observed
+
+    def test_method_alias_to_private_descriptor_target(self):
+        class C:
+            """C."""
+
+            @classmethod
+            def _cm(cls) -> None:
+                """private cm."""
+                ...
+
+            cm_alias = _cm
+
+            @staticmethod
+            def _sm() -> None:
+                """private sm."""
+                ...
+
+            sm_alias = _sm
+
+        observed = functions.dox_a_class(C)
+        expected = """# `C`
+
+C.
+
+## Methods
+
+### `cm_alias = _cm`
+
+### `sm_alias = _sm`
+
+"""
+        assert observed == expected, (
+            f"expected\n{expected}\nbut observed\n{observed}"
+        )
+
+    def test_method_alias_to_excluded_target(self):
+        class C:
+            """C."""
+
+            def foo(self) -> None:
+                """foo."""
+                ...
+
+            bar = foo
+
+        observed = functions.dox_a_class(C, {'exclude_names': ['foo']})
+        expected = """# `C`
+
+C.
+
+## Methods
+
+### `bar = foo`
+
+"""
         assert observed == expected, (
             f"expected\n{expected}\nbut observed\n{observed}"
         )

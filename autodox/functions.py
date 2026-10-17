@@ -134,6 +134,35 @@ def _list(line: str, options: dict = {}) -> str:
     return _invoke_handler(Event.AFTER_LIST, doc)
 
 
+def _name_of(item: Any, fallback: str) -> str:
+    """Returns the `__name__` of an item, unwrapping `__func__` so that
+        raw `classmethod`/`staticmethod` objects resolve to the name of
+        the wrapped function. Falls back to the given name when no
+        `__name__` is available.
+    """
+    func = getattr(item, '__func__', item)
+    return getattr(func, '__name__', fallback)
+
+
+def _dox_alias(
+        binding: str, target: str, header_level: int = 0,
+        format: str = 'header'
+    ) -> str:
+    """Renders an alias binding, e.g. `UsageError = DependencyError`,
+        using the specified format. Alias entries do not fire the
+        `AFTER_CLASS` or `AFTER_FUNCTION` handlers.
+    """
+    _debug(1, '_dox_alias(', binding, target, header_level, format, ')')
+    alias = f'`{binding} = {target}`'
+    match format:
+        case 'header':
+            return _header(alias, header_level)
+        case 'paragraph':
+            return _paragraph(alias)
+        case _:
+            return _list(alias)
+
+
 def dox_a_module(module: ModuleType, options: dict = {}) -> str:
     """Iterates over a module, collects information about its parts, and
         returns a str containing markdown documentation generated from
@@ -183,13 +212,23 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
             continue
 
         if isinstance(item, type):
-            doc = dox_a_class(item, suboptions)
+            target = _name_of(item, name)
+            if target != name and module.__dict__.get(target) is item:
+                doc = _dox_alias(name, target, header_level + 2)
+            else:
+                doc = dox_a_class(item, suboptions)
             if doc:
                 classes.append(doc)
             continue
 
         if type(item) is type(dox_a_module):
-            doc = dox_a_function(item, {**suboptions, 'format': function_format})
+            target = _name_of(item, name)
+            if target != name and module.__dict__.get(target) is item:
+                doc = _dox_alias(name, target, header_level + 2, function_format)
+            else:
+                doc = dox_a_function(
+                    item, {**suboptions, 'format': function_format}
+                )
             functions.append(doc)
             continue
 
@@ -432,12 +471,19 @@ def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
     }
 
     if dunders:
-        for _, value in dunders.items():
-            doc += dox_a_function(value, {**suboptions, 'format': format})
+        for name, value in dunders.items():
+            target = _name_of(value, name)
+            if target != name and cls.__dict__.get(target) is value:
+                doc += _dox_alias(name, target, header_level, format)
+            else:
+                doc += dox_a_function(value, {**suboptions, 'format': format})
 
     if publics:
         for name, value in publics.items():
-            if isinstance(value, classmethod):
+            target = _name_of(value, name)
+            if target != name and cls.__dict__.get(target) is value:
+                doc += _dox_alias(name, target, header_level, format)
+            elif isinstance(value, classmethod):
                 doc += dox_a_function(
                     getattr(cls, name),
                     {**suboptions, 'format': format, 'prepend': '@classmethod '}
@@ -451,8 +497,12 @@ def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
                 doc += dox_a_function(value, {**suboptions, 'format': format})
 
     if privates:
-        for _, value in privates.items():
-            doc += dox_a_function(value, {**suboptions, 'format': format})
+        for name, value in privates.items():
+            target = _name_of(value, name)
+            if target != name and cls.__dict__.get(target) is value:
+                doc += _dox_alias(name, target, header_level, format)
+            else:
+                doc += dox_a_function(value, {**suboptions, 'format': format})
 
     return doc
 

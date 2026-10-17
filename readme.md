@@ -83,12 +83,22 @@ modules encountered when analyzing the specified module
 recursively on any additional modules encountered when analyzing the specified
 module
 
+When the same class or function is bound to more than one name in a module
+(e.g. `UsageError = DependencyError`), `dox_a_module` documents the target once
+and emits an alias entry (`### \`UsageError = DependencyError\``) for each
+additional binding. Alias detection is automatic; no configuration is required,
+and a class-body method alias such as `bar = foo` is handled the same way. An
+alias is only detected when the target is bound under its `__name__` in the
+same namespace: aliases of builtins, inherited methods, renamed imports, and
+name-mangled targets are documented under their `__name__` instead.
+
 #### `dox_a_value(value: Any, options: dict = None) -> str`
 
 Produces docs for a value. Valid options are the following:
 
 - `header_level: int` - number of additional hashtags to add to headers
 - `format: str` - format can be one of 'header', 'paragraph', or 'list'
+- `name: str` - overrides the name used in the docs (the module binding name)
 
 #### `dox_a_function(function: Callable, options: dict = None) -> str`
 

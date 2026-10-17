@@ -1,3 +1,10 @@
+## 0.1.17 (WIP)
+
+- Bug fixes:
+  - Class, function, and method aliases are now detected automatically and
+    documented as `Alias = Target` instead of appearing as duplicates of the
+    target
+
 ## 0.1.16
 
 - Fixed a crash when documenting functions or classes that lack a `__name__`
