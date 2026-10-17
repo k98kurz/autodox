@@ -1,0 +1,83 @@
+## 0.1.16
+
+- Fixed a crash when documenting functions or classes that lack a `__name__`
+  attribute
+
+## 0.1.15
+
+- Fixed an extra space in signatures that combine a decorator prepend with
+  `async`
+
+## 0.1.14
+
+- Async functions are now denoted with an `async` prefix in signatures
+- Added `line_length` option to configure the paragraph wrap width
+
+## 0.1.13
+
+- Ignore the empty `_no_init_or_replace_init` method that Python 3.10
+  `Protocol` classes use to override `__init__`
+
+## 0.1.12
+
+- Dunder methods are now documented before public and private methods
+- `__init__` is now documented even when `include_dunder` is not enabled
+
+## 0.1.11
+
+- Fixed a variable shadowing bug that produced incorrect class names in headers
+- Moved debug statements below function docstrings
+
+## 0.1.10
+
+- Fixed paragraph wrapping so a token longer than the line length gets its own
+  line
+
+## 0.1.9
+
+- Class exclusion is now evaluated before member collection
+
+## 0.1.8
+
+- Added debug tracing and the `-debug` CLI flag (repeated use increases
+  verbosity)
+- Fixed collection of annotations inherited from parent classes
+
+## 0.1.7
+
+- Value names are now formatted as inline code
+
+## 0.1.6
+
+- Class properties are now formatted as `name: docstring` with a blank line
+  after the section
+
+## 0.1.5
+
+- Added class docstring handling
+
+## 0.1.4
+
+- Lowered the minimum supported Python version to 3.10
+
+## 0.1.3
+
+- Fixed rendering of type-valued defaults in function signatures
+- Split the CLI entry point into `invoke_cli(args)` and a `main_cli()` wrapper
+
+## 0.1.2
+
+- Fixed class member filtering when `include_dunder` is enabled without
+  `include_private`
+
+## 0.1.1
+
+- Fixed documentation of classmethods
+- `object` no longer appears as the parent of top-level classes
+- Removed a trailing space from function signatures in header format
+
+## 0.1.0
+
+- Renumbered from 0.0.4.6 to 0.1.0
+- Function signatures now include keyword-only parameters and their defaults
+- String defaults are now quoted in signatures

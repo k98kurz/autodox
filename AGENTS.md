@@ -24,6 +24,8 @@ a human.
   2. Prove it fails by running the test.
   3. Fix the code.
   4. Prove it is fixed by running the test.
+- NEVER use `git add`, `git checkout`, `git restore`, etc. The management of the
+  repository is left to humans.
 - Code style guidelines are in docs/code_style.md. Read them before editing or
   reviewing code.
 - Use stdlib unittest, not pytest or any other test framework.
@@ -32,10 +34,15 @@ a human.
 # Memory
 
 Major architectural decisions, best practices, and other things worth remembering
-long-term are stored in docs/memory.md.
+long-term are stored in docs/memory.md. All entries must be actionable, not merely
+a historical record of churn.
 
 # Changelog
 
+`changelog.md` contains information useful for package consumers, particularly
+for updating versions of the library. This is NOT a graveyard for maintainer code
+churn entries. No internal/maintainer-relevant information should be preserved here.
+The format should be easy to scan and read for consumers of this library.
 Do NOT record changes to intermediate states in the change log. ONLY record things
 that ACTUALLY CHANGE BETWEEN RELEASES in the changelog.
 
