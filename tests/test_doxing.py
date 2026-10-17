@@ -1,5 +1,5 @@
 from __future__ import annotations
-from context import functions
+from autodox import functions
 from typing import Any, Hashable, Protocol, runtime_checkable
 import unittest
 

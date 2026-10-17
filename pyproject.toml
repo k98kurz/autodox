@@ -21,7 +21,34 @@ classifiers = [
 
 [project.urls]
 "Homepage" = "https://github.com/k98kurz/autodox"
+"Repository" = "https://github.com/k98kurz/autodox"
 "Bug Tracker" = "https://github.com/k98kurz/autodox/issues"
 
 [project.scripts]
 autodox = "autodox.functions:main_cli"
+
+[tool.hatch.build.targets.wheel]
+exclude = [
+  "tests",
+  ".github",
+  ".opencode",
+  "AGENTS.md",
+  "docs/code_style.md",
+  "docs/memory.md",
+  "scripts",
+  "temp",
+  "references",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "tests",
+  ".github",
+  ".opencode",
+  "AGENTS.md",
+  "docs/code_style.md",
+  "docs/memory.md",
+  "scripts",
+  "temp",
+  "references",
+]

@@ -183,9 +183,17 @@ few edge cases I encountered using the package (12 tests).
 
 To test, clone the repository and run the following:
 
-```
-python test_hooks.py
-python test_doxing.py
+```bash
+# setup
+python -m venv venv
+source venv/bin/activate
+pip install -e .
+
+# then
+python tests/test_hooks.py
+python tests/test_doxing.py
+# or
+python -m unittest discover tests/
 ```
 
 ## ISC License
