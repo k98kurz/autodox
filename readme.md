@@ -57,8 +57,13 @@ configured with the following options:
 - `--include-dunder` to include things prefaced with '__'
 - `--include-submodules` to include submodules
 - `--document-submodules` to run the module documentation for submodules
-- `--no-backtick-names` to omit backticks around annotation and value names
+- `--no-backtick-names` to omit backticks around names (annotations, values,
+  classes, modules, and aliases)
 - `--no-backtick-types` to omit backticks around annotation and value types
+- `--no-backtick-signatures` to omit backticks around function and method
+  signatures
+- `--no-backticks` to disable all backticks at once, forcing each granular flag
+  off
 - `--debug` to increase the level of debug statements printed to stderr (starts
   at 0; levels 1-3 are available, and debug output does not contaminate redirected
   markdown)
@@ -106,10 +111,15 @@ modules encountered when analyzing the specified module
 recursively on any additional modules encountered when analyzing the specified
 module
 - `line_length: int` - number of chars per line in paragraphs
-- `backtick_names: bool` - if False, omits backticks from annotation and value
-names (defaults to True)
+- `backtick_names: bool` - if False, omits backticks from names (annotations,
+values, classes, modules, and aliases; defaults to True)
 - `backtick_types: bool` - if False, omits backticks from annotation and value
 types (defaults to True)
+- `backtick_signatures: bool` - if False, omits backticks from function and
+method signatures (defaults to True)
+- `backticks: bool` - if False, disables all backticks regardless of the
+granular options (defaults to True); setting it True does not re-enable a
+category disabled by a granular option
 
 When the same class or function is bound to more than one name in a module
 (e.g. `UsageError = DependencyError`), `dox_a_module` documents the target once
@@ -132,6 +142,8 @@ Produces docs for a value. Valid options are the following:
   (defaults to True)
 - `backtick_types: bool` - if False, omits backticks from the value type
   (defaults to True)
+- `backticks: bool` - if False, disables all backticks (defaults to True; see
+  `dox_a_module` for how it interacts with the granular options)
 
 #### `dox_a_function(function: Callable, options: dict | None = None) -> str`
 
@@ -141,6 +153,10 @@ Produces docs for a function. Valid options are the following:
 - `format: str` - format can be one of 'header', 'paragraph', or 'list'
 - `prepend: str` - text prepended to the signature (used for decorators)
 - `line_length: int` - number of chars per line in paragraphs
+- `backtick_signatures: bool` - if False, omits backticks from the signature
+  (defaults to True)
+- `backticks: bool` - if False, disables all backticks (defaults to True; see
+  `dox_a_module` for how it interacts with the granular options)
 
 #### `dox_a_class(cls: type, options: dict | None = None) -> str`
 
@@ -152,10 +168,14 @@ Produces docs for a class. Valid options are the following:
 - `include_dunder: bool` - if True, includes things with names prefaced by '__'
 - `method_format: str` - can be one of 'header', 'paragraph', or 'list'
 - `line_length: int` - number of chars per line in paragraphs
-- `backtick_names: bool` - if False, omits backticks from annotation names
-  (defaults to True)
+- `backtick_names: bool` - if False, omits backticks from the class header and
+  annotation names (defaults to True)
 - `backtick_types: bool` - if False, omits backticks from annotation types
   (defaults to True)
+- `backtick_signatures: bool` - if False, omits backticks from method
+  signatures (defaults to True)
+- `backticks: bool` - if False, disables all backticks (defaults to True; see
+  `dox_a_module` for how it interacts with the granular options)
 
 #### Hooks
 

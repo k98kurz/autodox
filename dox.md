@@ -1,4 +1,4 @@
-# autodox
+# `autodox`
 
 Autodox is a package for generating documentation from code annotations, types,
 and docstrings.

@@ -7,11 +7,15 @@
 - `--debug` output now uses the standard library `logging` module and is written
   to stderr, so it no longer contaminates markdown redirected from stdout;
   levels 1-3 still select the same traces as before
-- Class annotation names and types and value types are now rendered as inline
-  code (backticks) by default
-- Added `backtick_names` and `backtick_types` options (on by default) and the
-  corresponding `--no-backtick-names` / `--no-backtick-types` CLI flags to
-  disable either
+- Names (annotations, values, classes, modules, and aliases) and types
+  (annotations and values) are now rendered as inline code (backticks) by
+  default; module headers, which were previously plain, are quoted as well
+- Added `backtick_names`, `backtick_types`, and `backtick_signatures` options
+  (on by default) and the corresponding `--no-backtick-names`,
+  `--no-backtick-types`, and `--no-backtick-signatures` CLI flags to disable
+  each category
+- Added a `backticks` option and `--no-backticks` CLI flag that disable all
+  backtick quoting at once, even for categories the granular options leave on
 
 ## 0.1.17
 

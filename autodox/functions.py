@@ -161,21 +161,24 @@ def _name_of(item: Any, fallback: str) -> str:
 
 def _dox_alias(
         binding: str, target: str, header_level: int = 0,
-        format: str = 'header'
+        format: str = 'header', options: dict | None = None
     ) -> str:
     """Renders an alias binding, e.g. `UsageError = DependencyError`,
         using the specified format. Alias entries do not fire the
         `AFTER_CLASS` or `AFTER_FUNCTION` handlers.
     """
-    _debug(1, '_dox_alias(', binding, target, header_level, format, ')')
-    alias = f'`{binding} = {target}`'
+    _debug(1, '_dox_alias(', binding, target, header_level, format, options, ')')
+    options = options or {}
+    alias = _backtick(
+        f'{binding} = {target}', _backtick_enabled(options, 'backtick_names')
+    )
     match format:
         case 'header':
             return _header(alias, header_level)
         case 'paragraph':
-            return _paragraph(alias)
+            return _paragraph(alias, options)
         case _:
-            return _list(alias)
+            return _list(alias, options)
 
 
 def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
@@ -230,7 +233,7 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
         if isinstance(item, type):
             target = _name_of(item, name)
             if target != name and module.__dict__.get(target) is item:
-                doc = _dox_alias(name, target, header_level + 2)
+                doc = _dox_alias(name, target, header_level + 2, options=options)
             else:
                 doc = dox_a_class(item, suboptions)
             if doc:
@@ -240,7 +243,9 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
         if type(item) is type(dox_a_module):
             target = _name_of(item, name)
             if target != name and module.__dict__.get(target) is item:
-                doc = _dox_alias(name, target, header_level + 2, function_format)
+                doc = _dox_alias(
+                    name, target, header_level + 2, function_format, options
+                )
             else:
                 doc = dox_a_function(
                     item, {**suboptions, 'format': function_format}
@@ -251,7 +256,10 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
         doc = dox_a_value(item, {**suboptions, 'name': name, 'format': value_format})
         values.append(doc)
 
-    doc = _header(module.__name__, header_level)
+    doc = _header(
+        _backtick(module.__name__, _backtick_enabled(options, 'backtick_names')),
+        header_level,
+    )
 
     if hasattr(module, '__doc__') and module.__doc__:
         doc += _paragraph(module.__doc__, options)
@@ -290,12 +298,8 @@ def dox_a_value(value: Any, options: dict | None = None) -> str:
     value, options = _invoke_handler(Event.BEFORE_VALUE, value, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
-    backtick_names = (
-        options['backtick_names'] if 'backtick_names' in options else True
-    )
-    backtick_types = (
-        options['backtick_types'] if 'backtick_types' in options else True
-    )
+    backtick_names = _backtick_enabled(options, 'backtick_names')
+    backtick_types = _backtick_enabled(options, 'backtick_types')
 
     name = value.__name__ if hasattr(value, '__name__') else '{unknown/unnamed}'
     if 'name' in options:
@@ -328,6 +332,17 @@ def _annotation_str(annotation: Any) -> str:
 def _backtick(text: str, enabled: bool) -> str:
     """Wraps `text` in backticks when `enabled` is True."""
     return f'`{text}`' if enabled else text
+
+
+def _backtick_enabled(options: dict, key: str) -> bool:
+    """Returns whether backticks are enabled for the given option key.
+        The `backticks` umbrella option, when False, disables backticks
+        for every category; it never re-enables a category disabled by a
+        granular option.
+    """
+    master = options['backticks'] if 'backticks' in options else True
+    granular = options[key] if key in options else True
+    return master and granular
 
 
 def _param_str(param: Parameter) -> str:
@@ -403,6 +418,7 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
     prepend = options['prepend'] if 'prepend' in options else ''
+    backtick_signatures = _backtick_enabled(options, 'backtick_signatures')
 
     if iscoroutinefunction(function):
         prepend = f'{prepend}async '
@@ -452,10 +468,11 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
     annotations = ', '.join(parts)
     docstring = function.__doc__ if hasattr(function, '__doc__') else None
 
-    sig_str = f'`{prepend}{name}({annotations})'
+    tick = '`' if backtick_signatures else ''
+    sig_str = f'{tick}{prepend}{name}({annotations})'
     if return_annotation is not Parameter.empty:
         sig_str += f' -> {_annotation_str(return_annotation)}'
-    sig_str += ':` ' if format != 'header' else ':`'
+    sig_str += f':{tick}' + ('' if format == 'header' else ' ')
 
     doc = ''
 
@@ -602,7 +619,7 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
         for name, value in dunders.items():
             target = _name_of(value, name)
             if target != name and cls.__dict__.get(target) is value:
-                doc += _dox_alias(name, target, header_level, format)
+                doc += _dox_alias(name, target, header_level, format, options)
             else:
                 doc += dox_a_function(value, {**suboptions, 'format': format})
 
@@ -610,7 +627,7 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
         for name, value in publics.items():
             target = _name_of(value, name)
             if target != name and cls.__dict__.get(target) is value:
-                doc += _dox_alias(name, target, header_level, format)
+                doc += _dox_alias(name, target, header_level, format, options)
             elif isinstance(value, classmethod):
                 doc += dox_a_function(
                     getattr(cls, name),
@@ -628,7 +645,7 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
         for name, value in privates.items():
             target = _name_of(value, name)
             if target != name and cls.__dict__.get(target) is value:
-                doc += _dox_alias(name, target, header_level, format)
+                doc += _dox_alias(name, target, header_level, format, options)
             else:
                 doc += dox_a_function(value, {**suboptions, 'format': format})
 
@@ -662,12 +679,8 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
     header_level = options['header_level'] if 'header_level' in options else 0
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
-    backtick_names = (
-        options['backtick_names'] if 'backtick_names' in options else True
-    )
-    backtick_types = (
-        options['backtick_types'] if 'backtick_types' in options else True
-    )
+    backtick_names = _backtick_enabled(options, 'backtick_names')
+    backtick_types = _backtick_enabled(options, 'backtick_types')
     suboptions = {**options, 'header_level': header_level + 1}
 
     classname = (
@@ -716,9 +729,8 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
         if type(item) is property:
             properties[name] = item
 
-    doc = _header(
-        f'`{classname}({parent})`', header_level
-    ) if parent else _header(f'`{classname}`', header_level)
+    header_name = f'{classname}({parent})' if parent else classname
+    doc = _header(_backtick(header_name, backtick_names), header_level)
 
     docstring = cls.__doc__ if hasattr(cls, '__doc__') else None
     if docstring:

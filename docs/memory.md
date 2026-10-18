@@ -43,7 +43,8 @@ whose name differs from `__name__` as an alias: re-exported objects such as
 `from types import ModuleType` (whose `__name__` is `module`) would become false
 positives like `ModuleType = module`. Render detected aliases with `_dox_alias`,
 which honors the section format and fires no `AFTER_CLASS`/`AFTER_FUNCTION`
-handler.
+handler; forward `options` into `_paragraph`/`_list` so alias entries honor
+`line_length` like every other renderer.
 
 Detection is limited to the same namespace and does NOT walk the MRO. Aliases
 of inherited methods (e.g. `bar = Base.foo` in a subclass), builtins, renamed
@@ -69,6 +70,18 @@ Filter and display them as follows, or the two paths silently diverge:
   a mangled `__name`; prefer the unmangled display
 - dedupe annotation display names after unmangling, since a base and child can
   each define `__name` under different stored keys
+
+## Backtick umbrella option is disable-only
+
+`_backtick_enabled(options, key)` computes `master and granular`, where `master`
+is `options['backticks']` (default True) and `granular` is `options[key]`
+(default True). Therefore `backticks=False` forces every category off, but
+`backticks=True` does NOT re-enable a granular category set to False. Keep this
+one-directional semantics (documentation and changelog must say "disables",
+not "overrides"); a bidirectional override would require distinguishing an
+absent key from the default. All render sites (`_dox_alias`, the `dox_a_module`
+header, `dox_a_value`, `dox_a_function`, `dox_a_class`) must route through
+`_backtick`.
 
 ## Build hook: `version` is the builder version, not the project version
 

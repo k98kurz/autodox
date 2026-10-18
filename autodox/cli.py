@@ -75,12 +75,25 @@ def _build_parser(prog: str) -> ArgumentParser:
     parser.add_argument(
         '--no-backtick-names', dest='backtick_names', action='store_false',
         default=None,
-        help='do not wrap annotation or value names in backticks'
+        help=(
+            'do not wrap names (annotations, values, classes, modules, and '
+            'aliases) in backticks'
+        )
     )
     parser.add_argument(
         '--no-backtick-types', dest='backtick_types', action='store_false',
         default=None,
-        help='do not wrap annotation or value types in backticks'
+        help='do not wrap annotation and value types in backticks'
+    )
+    parser.add_argument(
+        '--no-backtick-signatures', dest='backtick_signatures',
+        action='store_false', default=None,
+        help='do not wrap function and method signatures in backticks'
+    )
+    parser.add_argument(
+        '--no-backticks', dest='backticks', action='store_false',
+        default=None,
+        help='do not wrap anything in backticks'
     )
     parser.add_argument(
         '--debug', action='count', default=0,
@@ -123,6 +136,10 @@ def _settings_from(options: Namespace) -> dict:
         settings['backtick_names'] = options.backtick_names
     if options.backtick_types is not None:
         settings['backtick_types'] = options.backtick_types
+    if options.backtick_signatures is not None:
+        settings['backtick_signatures'] = options.backtick_signatures
+    if options.backticks is not None:
+        settings['backticks'] = options.backticks
     return settings
 
 

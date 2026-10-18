@@ -883,7 +883,7 @@ class TestAliases(unittest.TestCase):
         module.resolve_alias = resolve
 
         observed = functions.dox_a_module(module)
-        expected = """# repro_mod
+        expected = """# `repro_mod`
 
 ## Classes
 
@@ -911,6 +911,17 @@ Resolve a dependency.
     def test_dox_alias_paragraph_format(self):
         observed = functions._dox_alias('AliasFn', 'resolve', 0, 'paragraph')
         expected = '`AliasFn = resolve`\n\n'
+
+        assert observed == expected, (
+            f"expected\n{expected}\nbut observed\n{observed}"
+        )
+
+    def test_alias_paragraph_respects_line_length(self):
+        observed = functions._dox_alias(
+            'AliasName', 'TargetName', 0, 'paragraph',
+            {'backtick_names': False, 'line_length': 12}
+        )
+        expected = 'AliasName =\nTargetName\n\n'
 
         assert observed == expected, (
             f"expected\n{expected}\nbut observed\n{observed}"
@@ -1048,6 +1059,98 @@ C.
         assert observed == expected, (
             f"expected\n{expected}\nbut observed\n{observed}"
         )
+
+
+class TestBacktickOptions(unittest.TestCase):
+    def test_module_header_is_backticked_by_default(self):
+        module = ModuleType('sample_mod')
+
+        observed = functions.dox_a_module(module)
+
+        assert observed.startswith('# `sample_mod`\n'), observed
+
+    def test_module_header_backticks_can_be_disabled(self):
+        module = ModuleType('sample_mod')
+
+        observed = functions.dox_a_module(
+            module, {'backtick_names': False}
+        )
+
+        assert observed.startswith('# sample_mod\n'), observed
+
+    def test_class_header_backticks_can_be_disabled(self):
+        observed = functions.dox_a_class(
+            ExampleClass, {'backtick_names': False}
+        )
+
+        assert observed.startswith('# ExampleClass\n'), observed
+
+    def test_disabling_names_keeps_types_backticked(self):
+        observed = functions.dox_a_class(
+            ExampleClass, {'backtick_names': False}
+        )
+
+        assert '- clock_uuid: `bytes`' in observed, observed
+
+    def test_disabling_types_keeps_names_backticked(self):
+        observed = functions.dox_a_class(
+            ExampleClass, {'backtick_types': False}
+        )
+
+        assert observed.startswith('# `ExampleClass`\n'), observed
+        assert '- `clock_uuid`: bytes' in observed, observed
+
+    def test_alias_backticks_can_be_disabled(self):
+        observed = functions._dox_alias(
+            'AliasFn', 'resolve', 0, 'paragraph', {'backtick_names': False}
+        )
+
+        assert observed == 'AliasFn = resolve\n\n', observed
+
+    def test_signature_backticks_can_be_disabled(self):
+        def fn(x: int) -> bool:
+            """Does a thing."""
+            ...
+
+        observed = functions.dox_a_function(
+            fn, {'backtick_signatures': False}
+        )
+
+        assert observed == '- fn(x: int) -> bool: Does a thing.\n', observed
+
+    def test_signature_header_backticks_can_be_disabled(self):
+        def fn(x: int) -> bool:
+            """Does a thing."""
+            ...
+
+        observed = functions.dox_a_function(
+            fn, {'format': 'header', 'backtick_signatures': False}
+        )
+
+        assert observed == '# fn(x: int) -> bool:\n\nDoes a thing.\n\n', observed
+
+    def test_umbrella_disables_all_backticks(self):
+        module = ModuleType('sample_mod')
+        module.ExampleClass = ExampleClass
+        module.some_value = 1
+
+        observed = functions.dox_a_module(module, {'backticks': False})
+
+        assert observed.startswith('# sample_mod\n'), observed
+        assert '`' not in observed, observed
+
+    def test_umbrella_overrides_granular_flags(self):
+        observed = functions.dox_a_class(
+            ExampleClass,
+            {
+                'backticks': False,
+                'backtick_names': True,
+                'backtick_types': True,
+                'backtick_signatures': True,
+            },
+        )
+
+        assert '`' not in observed, observed
 
 
 if __name__ == '__main__':

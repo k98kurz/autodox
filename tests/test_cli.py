@@ -98,6 +98,8 @@ class TestCli(unittest.TestCase):
             '--document-submodules',
             '--no-backtick-names',
             '--no-backtick-types',
+            '--no-backtick-signatures',
+            '--no-backticks',
             '--debug', '--debug',
         ]
 
@@ -121,6 +123,8 @@ class TestCli(unittest.TestCase):
             'document_submodules': True,
             'backtick_names': False,
             'backtick_types': False,
+            'backtick_signatures': False,
+            'backticks': False,
         }, captured['options']
         assert 'depth-one' in err, err
         assert 'depth-two' in err, err
