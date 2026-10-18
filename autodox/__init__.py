@@ -14,3 +14,4 @@ from .functions import (
     set_after_handler,
     unset_handler
 )
+from .version import version

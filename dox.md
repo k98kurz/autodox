@@ -46,4 +46,8 @@ Sets a handler for an AFTER_ event.
 
 Unset an event handling handler.
 
+### `version() -> str:`
+
+Returns the current version of this package.
+
 

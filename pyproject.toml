@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -10,11 +10,12 @@ authors = [
 ]
 description = "Tool for generating documentation automatically from code annotations, types, and docstrings."
 readme = "readme.md"
+license = "ISC"
+license-files = ["license"]
 requires-python = ">=3.10"
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: ISC License (ISCL)",
   "Operating System :: OS Independent",
   "Topic :: Documentation"
 ]
@@ -28,27 +29,11 @@ classifiers = [
 autodox = "autodox.functions:main_cli"
 
 [tool.hatch.build.targets.wheel]
-exclude = [
-  "tests",
-  ".github",
-  ".opencode",
-  "AGENTS.md",
-  "docs/code_style.md",
-  "docs/memory.md",
-  "scripts",
-  "temp",
-  "references",
-]
+packages = ["autodox"]
 
 [tool.hatch.build.targets.sdist]
-exclude = [
-  "tests",
-  ".github",
-  ".opencode",
-  "AGENTS.md",
-  "docs/code_style.md",
-  "docs/memory.md",
-  "scripts",
-  "temp",
-  "references",
+only-include = [
+  "autodox",
+  "changelog.md",
+  "dox.md",
 ]

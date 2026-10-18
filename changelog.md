@@ -1,4 +1,4 @@
-## 0.1.17 (WIP)
+## 0.1.17
 
 - Bug fixes:
   - Class, function, and method aliases are now detected automatically and

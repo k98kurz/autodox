@@ -227,7 +227,7 @@ python -m unittest discover tests/
 
 ## ISC License
 
-Copyleft (c) 2023 k98kurz
+Copyright (c) 2026 k98kurz
 
 Permission to use, copy, modify, and/or distribute this software
 for any purpose with or without fee is hereby granted, provided
