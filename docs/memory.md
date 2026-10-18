@@ -51,3 +51,21 @@ imports, and name-mangled targets (`bar = __foo`: key `_C__foo` vs `__name__`
 `__foo`) are not detected even via `cls.__dict__.get(target)`; document these
 as caveats instead of trying to detect them, since broader detection risks the
 false positives described above.
+
+## Filter class annotations on stored keys, display unmangled names
+
+Python mangles a class-body `__name` (at most one trailing underscore) to
+`_ClassName__name`; annotations and properties are keyed by the mangled name.
+Filter and display them as follows, or the two paths silently diverge:
+
+- classify with `_is_visible(name, include_private, include_dunder)` on the
+  stored key; classifying an unmangled `__name` would treat it as a dunder and
+  require `include_dunder` instead of `include_private`
+- display with `_unmangle_name(name, owner)`. For annotations, resolve `owner`
+  with `_annotation_owner(cls, name)`, which walks the MRO, because
+  `_get_all_annotations` merges inherited mangled keys (`_Base__name`)
+- `exclude_names` must match the stored key and the unmangled source name
+- a genuine single-underscore name `_ClassName__name` is indistinguishable from
+  a mangled `__name`; prefer the unmangled display
+- dedupe annotation display names after unmangling, since a base and child can
+  each define `__name` under different stored keys

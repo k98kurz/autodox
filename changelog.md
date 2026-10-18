@@ -8,6 +8,13 @@
     declaration order with correct defaults, `*args`/`**kwargs` markers,
     properly placed `/` and `*` separators, and preserved `None`/subscripted
     (e.g. `dict[str, str]`) annotations
+  - Class annotations now respect `include_private`, `include_dunder`, and
+    `exclude_names` instead of always being documented
+  - Annotation types render as `int`/`dict[str, str]` instead of
+    `<class 'int'>`, matching function signatures
+  - Name-mangled private annotations and properties are displayed under their
+    source names (e.g. `__hidden` instead of `_Class__hidden`), and
+    `exclude_names` accepts either form
 
 ## 0.1.16
 

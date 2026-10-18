@@ -425,7 +425,52 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     return _invoke_handler(Event.AFTER_FUNCTION, doc)
 
 
-def _dox_properties(properties: dict, header_level: int = 0) -> str:
+def _is_visible(
+        name: str, include_private: bool, include_dunder: bool,
+        always_visible: tuple[str, ...] = ()
+    ) -> bool:
+    """Returns whether a class member or annotation name should be
+        documented given the privacy options. Names in `always_visible`
+        are documented regardless of the other options.
+    """
+    if name in always_visible:
+        return True
+    if name[:2] == '__':
+        return include_dunder
+    if name[:1] == '_':
+        return include_private
+    return True
+
+
+def _unmangle_name(name: str, owner: str = '') -> str:
+    """Returns the source name of a name-mangled class member. Python
+        stores a class-body `__name` (at most one trailing underscore)
+        as `_ClassName__name`; this reverses that transformation.
+    """
+    if not owner:
+        return name
+    prefix = '_' + owner.lstrip('_')
+    if name.startswith(prefix + '__'):
+        return name[len(prefix):]
+    return name
+
+
+def _annotation_owner(cls: type, name: str) -> str:
+    """Returns the name of the first class in the MRO that defines the
+        given annotation, defaulting to the name of `cls`.
+    """
+    fallback = cls.__name__ if hasattr(cls, '__name__') else ''
+    for klass in getattr(cls, '__mro__', ()):
+        if name in vars(klass).get('__annotations__', {}):
+            if hasattr(klass, '__name__'):
+                return klass.__name__
+            return fallback
+    return fallback
+
+
+def _dox_properties(
+        properties: dict, header_level: int = 0, classname: str = ''
+    ) -> str:
     """Format properties for a class."""
     _debug(1, '_dox_properties(', properties, header_level, ')')
     doc = ''
@@ -447,24 +492,27 @@ def _dox_properties(properties: dict, header_level: int = 0) -> str:
 
     if publics:
         for name, value in publics.items():
+            display = _unmangle_name(name, classname)
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{name}: {value.__doc__}')
+                doc += _list(f'{display}: {value.__doc__}')
             else:
-                doc += _list(name)
+                doc += _list(display)
 
     if privates:
         for name, value in privates.items():
+            display = _unmangle_name(name, classname)
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{name}: {value.__doc__}')
+                doc += _list(f'{display}: {value.__doc__}')
             else:
-                doc += _list(name)
+                doc += _list(display)
 
     if dunders:
         for name, value in dunders.items():
+            display = _unmangle_name(name, classname)
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{name}: {value.__doc__}')
+                doc += _list(f'{display}: {value.__doc__}')
             else:
-                doc += _list(name)
+                doc += _list(display)
 
     return doc
 
@@ -573,30 +621,30 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
 
     properties = {}
     methods = {}
-    annotations = _get_all_annotations(cls)
+    annotations = {}
+    for name, value in _get_all_annotations(cls).items():
+        owner = _annotation_owner(cls, name)
+        display = _unmangle_name(name, owner)
+        if  (   name in exclude_names
+                or display in exclude_names
+            ):
+            continue
+        if not _is_visible(name, include_private, include_dunder):
+            continue
+        annotations[display] = value
 
     if parent:
         parent = parent.__name__ if hasattr(parent, '__name__') else str(parent)
     parent = None if parent == 'object' else parent
 
     for name, item in cls.__dict__.items():
-        if  (   name[:1] == '_'
-                and not (include_private or include_dunder)
-                and name != '__init__'
+        if not _is_visible(
+                name, include_private, include_dunder, ('__init__',)
             ):
             continue
-        if  (   name[:1] == '_'
-                and include_dunder
-                and not include_private
-                and name[:2] != '__'
+        if  (   name in exclude_names
+                or _unmangle_name(name, classname) in exclude_names
             ):
-            continue
-        if  (   name[:2] == '__'
-                and not include_dunder
-                and name != '__init__'
-            ):
-            continue
-        if name in exclude_names:
             continue
 
         if type(item) in (MethodType, FunctionType, staticmethod, classmethod):
@@ -620,12 +668,12 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
     if annotations:
         doc += _header('Annotations', header_level + 1)
         for name, value in annotations.items():
-            doc += _list(f'{name}: {str(value)}')
+            doc += _list(f'{name}: {_annotation_str(value)}')
         doc += '\n'
 
     if properties:
         doc += _header('Properties', header_level + 1)
-        doc += _dox_properties(properties, header_level) + '\n'
+        doc += _dox_properties(properties, header_level, classname) + '\n'
 
     if methods:
         doc += _header('Methods', header_level + 1)

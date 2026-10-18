@@ -60,6 +60,33 @@ class ExampleInterface(Protocol):
         ...
 
 
+class AnnotationExample:
+    """An example class with varied annotations."""
+    public_attr: int
+    _private_attr: str
+    __mangled_private: bytes
+    __dunder__: object
+
+    @property
+    def __mangled_property(self) -> int:
+        """Mangled property."""
+        ...
+
+
+class AnnotatedBase:
+    """A base class with annotations."""
+    base_public: int
+    _base_private: int
+    __base_secret: bytes
+
+
+class AnnotatedChild(AnnotatedBase):
+    """A child class with annotations."""
+    child_public: str
+    _child_private: str
+    __child_secret: int
+
+
 def diff(str1: str, str2: str) -> dict[str, list[str]]:
     """Returns each non-matching region between `str1` and `str2` using
         `difflib`, keyed by the offsets in each string and mapping to
@@ -548,6 +575,121 @@ Example async class method.
             f"expected {{\n{expected}}} but got {{\n{doc}}} "
             f"diff {{{diff(expected, doc)}}}"
         )
+
+
+class TestDoxAClassAnnotations(unittest.TestCase):
+    def test_private_annotations_excluded_by_default(self):
+        doc = functions.dox_a_class(AnnotationExample)
+
+        assert '- public_attr: int' in doc, doc
+        assert '_private_attr' not in doc, doc
+        assert '__mangled_private' not in doc, doc
+        assert '_AnnotationExample__mangled_private' not in doc, doc
+        assert '__mangled_property' not in doc, doc
+        assert '_AnnotationExample__mangled_property' not in doc, doc
+        assert '__dunder__' not in doc, doc
+
+    def test_annotation_visibility_options(self):
+        private = functions.dox_a_class(
+            AnnotationExample, {'include_private': True}
+        )
+
+        assert '- _private_attr: str' in private, private
+        assert '- __mangled_private: bytes' in private, private
+        assert '- __mangled_property: Mangled property.' in private, private
+        assert '_AnnotationExample__mangled_private' not in private, private
+        assert '_AnnotationExample__mangled_property' not in private, private
+        assert '__dunder__' not in private, private
+
+        dunder = functions.dox_a_class(
+            AnnotationExample, {'include_dunder': True}
+        )
+
+        assert '- __dunder__: object' in dunder, dunder
+        assert '_private_attr' not in dunder, dunder
+        assert '__mangled_private' not in dunder, dunder
+        assert '__mangled_property' not in dunder, dunder
+
+        options = {'include_private': True, 'include_dunder': True}
+        both = functions.dox_a_class(AnnotationExample, options)
+
+        assert '- _private_attr: str' in both, both
+        assert '- __mangled_private: bytes' in both, both
+        assert '- __mangled_property: Mangled property.' in both, both
+        assert '- __dunder__: object' in both, both
+        assert '_AnnotationExample__mangled_private' not in both, both
+        assert '_AnnotationExample__mangled_property' not in both, both
+
+    def test_exclude_names_applies_to_annotations(self):
+        doc = functions.dox_a_class(
+            AnnotationExample, {'exclude_names': ['public_attr']}
+        )
+
+        assert 'public_attr' not in doc, doc
+        assert '_private_attr' not in doc, doc
+
+    def test_exclude_names_matches_source_annotation_name(self):
+        options = {
+            'include_private': True,
+            'exclude_names': ['__mangled_private'],
+        }
+        doc = functions.dox_a_class(AnnotationExample, options)
+
+        assert '__mangled_private' not in doc, doc
+        assert '_AnnotationExample__mangled_private' not in doc, doc
+
+    def test_inherited_private_annotations_are_filtered(self):
+        doc = functions.dox_a_class(AnnotatedChild)
+
+        assert 'base_public: int' in doc, doc
+        assert 'child_public: str' in doc, doc
+        assert '_base_private' not in doc, doc
+        assert '_child_private' not in doc, doc
+        assert '__base_secret' not in doc, doc
+        assert '__child_secret' not in doc, doc
+
+        doc = functions.dox_a_class(
+            AnnotatedChild, {'include_private': True}
+        )
+
+        assert '_base_private: int' in doc, doc
+        assert '_child_private: str' in doc, doc
+        assert '- __base_secret: bytes' in doc, doc
+        assert '- __child_secret: int' in doc, doc
+        assert '_AnnotatedBase__base_secret' not in doc, doc
+        assert '_AnnotatedChild__child_secret' not in doc, doc
+
+    def test_only_private_annotations_omits_section(self):
+        class OnlyPrivateAnnotations:
+            """Only private annotations."""
+            _hidden: int
+
+        doc = functions.dox_a_class(OnlyPrivateAnnotations)
+        expected = (
+            '# `OnlyPrivateAnnotations`\n\nOnly private annotations.\n\n'
+        )
+
+        assert doc == expected, f'expected\n{expected}\nbut observed\n{doc}'
+
+    def test_annotations_render_without_class_wrappers(self):
+        class RealTypes:
+            """Real type annotations."""
+
+        RealTypes.__annotations__ = {
+            'public_attr': int,
+            'mapping': dict[str, str],
+            '_private_attr': str,
+        }
+        doc = functions.dox_a_class(RealTypes)
+
+        assert '- public_attr: int' in doc, doc
+        assert '- mapping: dict[str, str]' in doc, doc
+        assert '_private_attr' not in doc, doc
+
+        doc = functions.dox_a_class(RealTypes, {'include_private': True})
+
+        assert '- _private_attr: str' in doc, doc
+        assert "<class 'int'>" not in doc, doc
 
 
 class TestDoxAProtocol(unittest.TestCase):
