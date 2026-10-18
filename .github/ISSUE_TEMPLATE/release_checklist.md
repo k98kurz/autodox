@@ -18,10 +18,7 @@ Once all other issues are complete, prepare to release the next version.
 - [ ] Update readme.md
 - [ ] Update changelog.md
 - [ ] Review and finalize documentation
-- [ ] Ensure version strings are set to `'M.m.p'`
-  - `version.py`
-  - `pyproject.toml`
-  - `readme.md` links
+- [ ] Ensure `pyproject.toml` version string is set to `'M.m.p'`
 - [ ] Close milestone on GitHub
 - [ ] Push tag and make release on GitHub
 - [ ] Update PyPI

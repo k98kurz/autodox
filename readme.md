@@ -67,6 +67,7 @@ configured with the following options:
 - `--debug` to increase the level of debug statements printed to stderr (starts
   at 0; levels 1-3 are available, and debug output does not contaminate redirected
   markdown)
+- `-v`, `--version` to print the version and exit
 
 For experimentation and to learn how the options work, try running the following:
 

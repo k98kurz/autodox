@@ -16,6 +16,7 @@
   each category
 - Added a `backticks` option and `--no-backticks` CLI flag that disable all
   backtick quoting at once, even for categories the granular options leave on
+- Added a `-v` / `--version` CLI flag that prints the package version and exits
 
 ## 0.1.17
 

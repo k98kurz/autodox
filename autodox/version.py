@@ -1,4 +1,8 @@
-__version__ = '0.2.0-dev'
+from __future__ import annotations
+import importlib.metadata
+
+
+__version__ = importlib.metadata.version('autodox')
 
 
 def version() -> str:

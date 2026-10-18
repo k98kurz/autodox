@@ -1,5 +1,6 @@
 from __future__ import annotations
 from autodox import cli, functions
+from autodox.version import version
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from logging import CRITICAL, DEBUG, getLogger, Handler, INFO
@@ -256,6 +257,31 @@ class TestCli(unittest.TestCase):
             cli.invoke_cli(['autodox', '--help'])
         assert cm.exception.code == 0, cm.exception.code
         assert 'usage' in out.getvalue().lower(), out.getvalue()
+
+    def test_version_flag_exits_zero_and_prints_version(self):
+        out, err = StringIO(), StringIO()
+        with self.assertRaises(SystemExit) as cm, redirect_stdout(out), \
+                redirect_stderr(err):
+            cli.invoke_cli(['autodox', '--version'])
+        assert cm.exception.code == 0, cm.exception.code
+        assert out.getvalue() == f'{version()}\n', out.getvalue()
+        assert err.getvalue() == '', err.getvalue()
+
+    def test_short_version_flag_exits_zero_and_prints_version(self):
+        out, err = StringIO(), StringIO()
+        with self.assertRaises(SystemExit) as cm, redirect_stdout(out), \
+                redirect_stderr(err):
+            cli.invoke_cli(['autodox', '-v'])
+        assert cm.exception.code == 0, cm.exception.code
+        assert out.getvalue() == f'{version()}\n', out.getvalue()
+        assert err.getvalue() == '', err.getvalue()
+
+    def test_version_does_not_import_module(self):
+        out = StringIO()
+        with patch.object(cli, 'import_module') as m, \
+                self.assertRaises(SystemExit), redirect_stdout(out):
+            cli.invoke_cli(['autodox', '--version', 'fakemod'])
+        assert m.call_count == 0, m.call_count
 
     def test_unknown_option_exits_two(self):
         with self.assertRaises(SystemExit) as cm, redirect_stderr(StringIO()):

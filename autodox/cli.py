@@ -1,5 +1,6 @@
 from __future__ import annotations
 from . import functions
+from .version import version
 from argparse import ArgumentParser, Namespace
 from importlib import import_module
 from logging import Formatter, getLogger, StreamHandler
@@ -103,6 +104,10 @@ def _build_parser(prog: str) -> ArgumentParser:
             'prints the trace for dox_{thing} calls; level 2 includes '
             'formatting functions; level 3 includes hooks functions'
         )
+    )
+    parser.add_argument(
+        '-v', '--version', action='version', version=version(),
+        help="show program's version number and exit"
     )
     return parser
 
