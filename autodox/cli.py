@@ -2,6 +2,7 @@ from __future__ import annotations
 from . import functions
 from argparse import ArgumentParser, Namespace
 from importlib import import_module
+from logging import Formatter, getLogger, StreamHandler
 from os.path import basename
 import sys
 
@@ -74,10 +75,10 @@ def _build_parser(prog: str) -> ArgumentParser:
     parser.add_argument(
         '--debug', action='count', default=0,
         help=(
-            'increases level of debug statements printed; starts at 0 and '
-            'increases once for each time this flag is passed; level 1 prints '
-            'the trace for dox_{thing} calls; level 2 includes formatting '
-            'functions; level 3 includes hooks functions'
+            'increases level of debug statements printed to stderr; starts at '
+            '0 and increases once for each time this flag is passed; level 1 '
+            'prints the trace for dox_{thing} calls; level 2 includes '
+            'formatting functions; level 3 includes hooks functions'
         )
     )
     return parser
@@ -111,12 +112,30 @@ def _settings_from(options: Namespace) -> dict:
     return settings
 
 
+def _configure_logging(debug: int) -> tuple[StreamHandler | None, int, bool]:
+    """Configures the package logger for a CLI invocation."""
+    logger = getLogger('autodox')
+    previous_level = logger.level
+    previous_propagate = logger.propagate
+    logger.setLevel(functions._logging_level_for(debug))
+    handler = None
+    if debug > 0:
+        handler = StreamHandler(sys.stderr)
+        handler.setFormatter(Formatter('%(message)s'))
+        handler._autodox_cli_handler = True
+        logger.addHandler(handler)
+        logger.propagate = False
+    return handler, previous_level, previous_propagate
+
+
 def invoke_cli(args: list[str]) -> int:
     """Entry point for pip installed wrapper function to invoke via CLI."""
     prog = basename(args[0]) if args and args[0] else ''
     parser = _build_parser(prog or 'autodox')
     options = parser.parse_args(args[1:])
-    functions._debug_level = options.debug
+    handler, previous_level, previous_propagate = _configure_logging(
+        options.debug
+    )
     settings = _settings_from(options)
 
     try:
@@ -124,6 +143,8 @@ def invoke_cli(args: list[str]) -> int:
             module = import_module(options.module, options.package)
         else:
             module = import_module(options.module)
+        print(functions.dox_a_module(module, settings))
+        return 0
     except ImportError as e:
         print(f'{type(e).__name__}: {str(e)}', file=sys.stderr)
         return 1
@@ -132,9 +153,12 @@ def invoke_cli(args: list[str]) -> int:
             raise
         print(f'{type(e).__name__}: {str(e)}', file=sys.stderr)
         return 1
-
-    print(functions.dox_a_module(module, settings))
-    return 0
+    finally:
+        logger = getLogger('autodox')
+        if handler is not None:
+            logger.removeHandler(handler)
+        logger.setLevel(previous_level)
+        logger.propagate = previous_propagate
 
 
 def main_cli() -> int:

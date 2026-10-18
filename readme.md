@@ -43,8 +43,10 @@ autodox module_name [options] > target_file.md
 
 Run `autodox --help` for the full, up-to-date list. The output can be
 configured with the following options:
-- `--exclude-name=name` to exclude a specific part of the module by name (or pass a comma-separated list; repeatable)
-- `--exclude-type=type` to exclude any module parts of the given type (or pass a comma-separated list; repeatable)
+- `--exclude-name=name` to exclude a specific part of the module by name (or pass
+  a comma-separated list; repeatable)
+- `--exclude-type=type` to exclude any module parts of the given type (or pass a
+  comma-separated list; repeatable)
 - `--package=module_name` to scope a relative import
 - `--header-level=number` to increase the hashtag count in headers by `number`
 - `--function-format=format` - can be one of 'header', 'paragraph', or 'list'
@@ -55,7 +57,9 @@ configured with the following options:
 - `--include-dunder` to include things prefaced with '__'
 - `--include-submodules` to include submodules
 - `--document-submodules` to run the module documentation for submodules
-- `--debug` to increase the level of debug statements printed (starts at 0)
+- `--debug` to increase the level of debug statements printed to stderr (starts
+  at 0; levels 1-3 are available, and debug output does not contaminate redirected
+  markdown)
 
 For experimentation and to learn how the options work, try running the following:
 
@@ -68,10 +72,14 @@ autodox autodox [options]
 The autodox package can also be used by importing and running the desired
 documentation function(s). The following are included.
 
-- `dox_a_module(module: ModuleType, options: dict | None = None) -> str` produces docs for a module
-- `dox_a_value(value: Any, options: dict | None = None) -> str` produces docs for a value
-- `dox_a_function(function: Callable, options: dict | None = None) -> str` produces docs for a function
-- `dox_a_class(cls: type, options: dict | None = None) -> str` produces docs for a class
+- `dox_a_module(module: ModuleType, options: dict | None = None) -> str` produces
+  docs for a module
+- `dox_a_value(value: Any, options: dict | None = None) -> str` produces docs for
+  a value
+- `dox_a_function(function: Callable, options: dict | None = None) -> str`
+  produces docs for a function
+- `dox_a_class(cls: type, options: dict | None = None) -> str` produces docs for
+  a class
 
 The valid options for each will be described below. Additionally, there is a
 system for setting up hooks that interact with the doc generation process to

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Enum, auto
 from inspect import Parameter, iscoroutinefunction, signature
+from logging import addLevelName, CRITICAL, DEBUG, getLogger, INFO
 from types import ModuleType, MethodType, FunctionType
 from typing import Any, Callable
 
@@ -21,13 +22,24 @@ class Event(Enum):
 
 
 _handlers = {}
-_debug_level = 0
+logger = getLogger(__name__)
+TRACE = 5
+addLevelName(TRACE, 'TRACE')
+_DEPTH_LEVELS = {1: INFO, 2: DEBUG, 3: TRACE}
+
+
+def _logging_level_for(debug: int) -> int:
+    """Returns the logging threshold for a CLI debug count."""
+    if debug <= 0:
+        return CRITICAL + 1
+    return _DEPTH_LEVELS.get(debug, TRACE)
 
 
 def _debug(level: int = 1, *args):
-    """Print a debug statement if enabled."""
-    if _debug_level >= level:
-        print(*args)
+    """Log a debug statement if enabled."""
+    log_level = _DEPTH_LEVELS.get(level, TRACE)
+    if logger.isEnabledFor(log_level):
+        logger.log(log_level, ' '.join(str(arg) for arg in args))
 
 
 def _set_handler(event: Event, function: Callable) -> None:

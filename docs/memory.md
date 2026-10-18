@@ -87,3 +87,21 @@ the hook script. Since `python -m build` rebuilds the wheel from the sdist,
 only-include` or release builds fail with a missing-hook error. Registering
 the hook globally makes the sdist step itself fail, rather than leaving a
 stray sdist before the wheel step fails.
+
+## Debug output uses logging; only the CLI configures handlers
+
+`autodox/functions.py` emits diagnostics through `getLogger(__name__)`. Keep
+`_debug(level, *args)` as a shim so call sites stay unchanged; it maps depth
+1/2/3 to `INFO`/`DEBUG`/`TRACE` (custom level 5), and `_logging_level_for`
+maps the CLI `--debug` count to a threshold. Library modules must not
+configure handlers or use `print` for diagnostics, nor touch logger level or
+`propagate`: `autodox/__init__.py` adds only a `NullHandler`, and
+`autodox/cli.py` attaches a temporary stderr `StreamHandler` per `invoke_cli`
+call, setting `propagate = False` while it is attached, then removes the
+handler and restores the previous level and `propagate` in a `finally` block.
+Without the propagation isolation, debug records reach the root logger, so a
+documented module that configures logging on import (e.g.
+`logging.basicConfig()`) emits every debug line twice. This keeps redirected
+markdown on stdout clean and leaves programmatic users' logging
+configuration untouched. Regression coverage:
+`tests/test_cli.py::TestCli::test_debug_output_is_not_propagated_to_root`.
