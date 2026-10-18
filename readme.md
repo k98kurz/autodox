@@ -41,20 +41,21 @@ Use the following to document a module with default configuration:
 autodox module_name [options] > target_file.md
 ```
 
-The output can be configured with the following options:
-- `-exclude_name=name` to exclude a specific part of the module by name
-- `-exclude_type=type` to exclude any module parts of the given type
-- `-package=module_name` to scope a relative import
-- `-header_level=number` to increase the hashtag count in headers by `number`
-- `-function_format=format` - can be one of 'header', 'paragraph', or 'list'
-- `-method_format=format` - can be one of 'header', 'paragraph', or 'list'
-- `-value_format=format` - can be one of 'header', 'paragraph', or 'list'
-- `-line_length=number` - number of chars per line in paragraphs
-- `-include_private` to include things prefaced with '_'
-- `-include_dunder` to include things prefaced with '__'
-- `-include_submodules` to include submodules
-- `-document_submodules` to run the module documentation for submodules
-- `-debug` to increase the level of debug statements printed (starts at 0)
+Run `autodox --help` for the full, up-to-date list. The output can be
+configured with the following options:
+- `--exclude-name=name` to exclude a specific part of the module by name (or pass a comma-separated list; repeatable)
+- `--exclude-type=type` to exclude any module parts of the given type (or pass a comma-separated list; repeatable)
+- `--package=module_name` to scope a relative import
+- `--header-level=number` to increase the hashtag count in headers by `number`
+- `--function-format=format` - can be one of 'header', 'paragraph', or 'list'
+- `--method-format=format` - can be one of 'header', 'paragraph', or 'list'
+- `--value-format=format` - can be one of 'header', 'paragraph', or 'list'
+- `--line-length=number` - number of chars per line in paragraphs
+- `--include-private` to include things prefaced with '_'
+- `--include-dunder` to include things prefaced with '__'
+- `--include-submodules` to include submodules
+- `--document-submodules` to run the module documentation for submodules
+- `--debug` to increase the level of debug statements printed (starts at 0)
 
 For experimentation and to learn how the options work, try running the following:
 

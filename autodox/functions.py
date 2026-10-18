@@ -1,7 +1,6 @@
 from __future__ import annotations
 from enum import Enum, auto
 from inspect import Parameter, iscoroutinefunction, signature
-from sys import argv
 from types import ModuleType, MethodType, FunctionType
 from typing import Any, Callable
 
@@ -710,88 +709,3 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
         doc += _dox_methods(cls, methods, suboptions)
 
     return _invoke_handler(Event.AFTER_CLASS, doc)
-
-
-def _cli_help(name: str) -> int:
-    print(f'Usage: {name} [package[.module]] [options] ')
-    print('\t-exclude_name=str: exclude the given name (or csv of names)')
-    print('\t-exclude_type=str: exclude the given type (or csv of types)')
-    print('\t-header_level=int: number of hashtags to prepend to headers')
-    print('\t-package=str: name of package if not using the . notation')
-    print('\t-function_format=str: choose one of "header", "paragraph", or "list"')
-    print('\t-method_format=type: choose one of "header", "paragraph", or "list"')
-    print('\t-value_format=type: choose one of "header", "paragraph", or "list"')
-    print('\t-include_private: includes things prefaced with "_"')
-    print('\t-include_dunder: includes things prefaced with "__"')
-    print('\t-include_submodules: includes submodules')
-    print('\t-document_submodules: runs module documentation for submodules')
-    print('\t-line_length=int: number of chars per line in paragraphs')
-    print('\t-debug: increases level of debug statements printed; starts at 0')
-    print('\t\tand increases once for each time this flag is passed; level 1')
-    print('\t\tprints out the trace for dox_{thing} calls; level 2 includes')
-    print('\t\tformatting functions; level 3 includes hooks functions')
-    return 0
-
-
-def invoke_cli(args: list[str]) -> int:
-    """Entry point for pip installed wrapper function to invoke via CLI."""
-    from importlib import import_module # approved lazy import
-    _settings = {}
-    _module = ''
-
-    for arg in args[1:]:
-        if arg in ('--help', '-help', '-?', '-h', '?'):
-            return _cli_help(args[0])
-
-        if arg[:14] == '-exclude_name=':
-            if 'exclude_names' not in _settings:
-                _settings['exclude_names'] = []
-            _settings['exclude_names'].extend(arg[14:].split(','))
-        elif arg[:14] == '-exclude_type=':
-            if 'exclude_types' not in _settings:
-                _settings['exclude_types'] = []
-            _settings['exclude_types'].extend(arg[14:].split(','))
-        elif arg[:14] == '-header_level=':
-            _settings['header_level'] = int(arg[14:])
-        elif arg[:9] == '-package=':
-            _settings['package'] = arg[9:]
-        elif arg[:17] == '-function_format=':
-            _settings['function_format'] = arg[17:]
-        elif arg[:15] == '-method_format=':
-            _settings['method_format'] = arg[15:]
-        elif arg[:14] == '-value_format=':
-            _settings['value_format'] = arg[14:]
-        elif arg[:12] == '-line_length':
-            _settings['line_length'] = int(arg[13:])
-        elif arg == '-include_private':
-            _settings['include_private'] = True
-        elif arg == '-include_dunder':
-            _settings['include_dunder'] = True
-        elif arg == '-include_submodules':
-            _settings['include_submodules'] = True
-        elif arg == '-document_submodules':
-            _settings['document_submodules'] = True
-        elif arg == '-debug':
-            global _debug_level
-            _debug_level += 1
-        elif arg[0] == '-':
-            print(f'unrecognized option: {arg}')
-            return 1
-        else:
-            _module = arg
-
-    try:
-        if 'package' in _settings:
-            _module = import_module(_module, _settings['package'])
-        else:
-            _module = import_module(_module)
-    except ModuleNotFoundError as e:
-        print(f'ModuleNotFoundError: {str(e)}')
-        return 1
-
-    print(dox_a_module(_module, _settings))
-    return 0
-
-
-def main_cli() -> int:
-    return invoke_cli(argv)

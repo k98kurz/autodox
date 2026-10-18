@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "autodox"
-version = "0.1.17"
+version = "0.2.0-dev"
 authors = [
   { name="k98kurz", email="k98kurz@gmail.com" },
 ]
@@ -26,7 +26,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/k98kurz/autodox/issues"
 
 [project.scripts]
-autodox = "autodox.functions:main_cli"
+autodox = "autodox.cli:main_cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["autodox"]
