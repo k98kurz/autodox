@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import Enum, auto
-from inspect import iscoroutinefunction
+from inspect import Parameter, iscoroutinefunction, signature
 from sys import argv
 from types import ModuleType, MethodType, FunctionType
 from typing import Any, Callable
@@ -291,6 +291,58 @@ def dox_a_value(value: Any, options: dict = {}) -> str:
     return _invoke_handler(Event.AFTER_VALUE, doc)
 
 
+def _annotation_str(annotation: Any) -> str:
+    """Renders an annotation as a str, keeping subscripts such as
+        `dict[str, str]` verbatim.
+    """
+    text = str(annotation)
+    if '[' in text:
+        return text
+    return annotation.__name__ if hasattr(annotation, '__name__') else text
+
+
+def _param_str(param: Parameter) -> str:
+    """Renders a parameter with its variadic marker, annotation, and
+        default when present.
+    """
+    match param.kind:
+        case Parameter.VAR_POSITIONAL:
+            text = f'*{param.name}'
+        case Parameter.VAR_KEYWORD:
+            text = f'**{param.name}'
+        case _:
+            text = param.name
+
+    if param.annotation is not Parameter.empty:
+        text += f': {_annotation_str(param.annotation)}'
+
+    if param.default is not Parameter.empty:
+        if type(param.default) is str:
+            text += f" = '{param.default}'"
+        elif type(param.default) is type:
+            text += f' = {param.default.__name__}'
+        else:
+            text += f' = {param.default}'
+
+    return text
+
+
+def _signature_parts(function: Callable) -> tuple[list[Parameter], Any]:
+    """Extracts the parameters and return annotation from the signature
+        of a function. Raw `classmethod` descriptors, which cannot be
+        inspected, are unwrapped first. Falls back to an empty list and
+        the `__annotations__` return annotation when it fails.
+    """
+    if isinstance(function, classmethod):
+        function = function.__func__
+    try:
+        sig = signature(function)
+        return [*sig.parameters.values()], sig.return_annotation
+    except (TypeError, ValueError):
+        annotations = getattr(function, '__annotations__', None) or {}
+        return [], annotations.get('return', Parameter.empty)
+
+
 def dox_a_function(function: Callable, options: dict = {}) -> str:
     """Collects some information about a function and returns it
         formatted as specified in the options or as a list.
@@ -305,92 +357,67 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
     prepend = options['prepend'] if 'prepend' in options else ''
 
     if iscoroutinefunction(function):
-        prepend = f'{prepend}async ' if prepend else 'async '
+        prepend = f'{prepend}async '
 
     name = (
         function.__name__ if hasattr(function, '__name__') else '{unknown/unnamed}'
     )
-    annotations = (
-        function.__annotations__ if hasattr(function, '__annotations__') else {}
-    )
-    return_annotation = annotations['return'] if 'return' in annotations else None
-    annotations = [
-        f'{key}: {value.__name__ if hasattr(value, "__name__") else str(value)}'
-        for key, value in annotations.items()
-        if key != 'return'
-    ]
+    params, return_annotation = _signature_parts(function)
 
-    if hasattr(function, '__defaults__') and function.__defaults__:
-        defaults = [*function.__defaults__]
-    else:
-        defaults = []
+    parts = []
+    pos_only_rendered, slash_emitted = False, False
+    star_emitted, varargs_rendered = False, False
 
-    if hasattr(function, '__kwdefaults__') and function.__kwdefaults__:
-        kwdefaults = {**function.__kwdefaults__}
-    else:
-        kwdefaults = {}
+    for position, param in enumerate(params):
+        if position == 0 and param.name in ('self', 'cls'):
+            continue
 
-    offset = len(annotations) - len(defaults) - len(kwdefaults)
-    if offset < 0:
-        offset = 0
+        if  (   param.kind is not Parameter.POSITIONAL_ONLY
+                and pos_only_rendered
+                and not slash_emitted
+            ):
+            parts.append('/')
+            slash_emitted = True
 
-    if annotations and defaults:
-        for i in range(len(defaults)):
-            if type(defaults[i]) is str:
-                annotations[i+offset] += f" = '{defaults[i]}'"
-            elif type(defaults[i]) is type:
-                annotations[i+offset] += f' = {defaults[i].__name__}'
-            else:
-                annotations[i+offset] += f' = {defaults[i]}'
+        if  (   param.kind is Parameter.KEYWORD_ONLY
+                and not varargs_rendered
+                and not star_emitted
+            ):
+            parts.append('*')
+            star_emitted = True
 
-    kwannotations, indices = [], []
-    if annotations and kwdefaults:
-        for k, v in kwdefaults.items():
-            if k in [a.split(':')[0] for a in annotations]:
-                i = [a.split(':')[0] for a in annotations].index(k)
-                indices.append(i)
-                if type(v) is str:
-                    kwannotations.append(annotations[i] + f" = '{v}'")
-                elif type(v) is type:
-                    kwannotations.append(annotations[i] + f" = {v.__name__}")
-                else:
-                    kwannotations.append(annotations[i] + f" = {v}")
+        if param.kind is Parameter.VAR_POSITIONAL:
+            varargs_rendered = True
 
-    indices.sort()
-    while len(indices):
-        i = indices.pop()
-        del annotations[i]
+        parts.append(_param_str(param))
 
-    if len(kwannotations):
-        annotations.append('/, *')
-        while len(kwannotations):
-            annotations.append(kwannotations.pop())
+        if param.kind is Parameter.POSITIONAL_ONLY:
+            pos_only_rendered = True
 
-    annotations = ', '.join(annotations) or ''
+    if pos_only_rendered and not slash_emitted:
+        parts.append('/')
+
+    annotations = ', '.join(parts)
     docstring = function.__doc__ if hasattr(function, '__doc__') else None
 
-    signature = f'`{prepend}{name}({annotations})'
-    if return_annotation:
-        if '[' in str(return_annotation):
-            return_annotation = str(return_annotation)
-        elif hasattr(return_annotation, '__name__'):
-            return_annotation = return_annotation.__name__
-        signature += f' -> {return_annotation}'
-    signature += ':` ' if format != 'header' else ':`'
+    sig_str = f'`{prepend}{name}({annotations})'
+    if return_annotation is not Parameter.empty:
+        sig_str += f' -> {_annotation_str(return_annotation)}'
+    sig_str += ':` ' if format != 'header' else ':`'
 
     doc = ''
 
     match format:
         case 'header':
-            doc = _header(signature, header_level)
+            doc = _header(sig_str, header_level)
             if docstring:
                 doc += _paragraph(docstring, options)
         case 'paragraph':
-            doc = _paragraph(signature, options)
+            doc = _paragraph(sig_str, options)
             if docstring:
                 doc += _paragraph(docstring, options)
         case _:
-            doc = signature
+            doc = sig_str
             if docstring:
                 doc += docstring
             doc = _list(doc)

@@ -187,6 +187,166 @@ class TestDoxAFunction(unittest.TestCase):
             f"expected {{\n{expected}}} but got {{\n{doc}}}"
         )
 
+    def test_annotations_with_kwargs_and_defaults(self):
+        class SqlQueryBuilder:
+            """A query builder."""
+
+            def order_by(
+                    self, column: str = None, direction: str = 'desc',
+                    **conditions: dict[str, str]
+                ) -> SqlQueryBuilder:
+                """Sets query order."""
+                ...
+
+        doc = functions.dox_a_function(SqlQueryBuilder.order_by)
+        expected = (
+            "- `order_by(column: str = None, direction: str = 'desc', "
+            "**conditions: dict[str, str]) -> SqlQueryBuilder:`"
+            "\nSets query order.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+        doc = functions.dox_a_function(
+            SqlQueryBuilder.order_by, {'format': 'header'}
+        )
+        expected = (
+            "# `order_by(column: str = None, direction: str = 'desc', "
+            "**conditions: dict[str, str]) -> SqlQueryBuilder:`\n\n"
+            "Sets query order.\n\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_annotations_with_varargs_and_defaults(self):
+        def fn_with_varargs(arg1: int, arg2: str = 'x', *args: int) -> None:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_varargs)
+        expected = (
+            "- `fn_with_varargs(arg1: int, arg2: str = 'x', *args: int)"
+            " -> None:` Does a\nthing, returns some stuff.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_annotations_with_varargs_kwargs_and_kwonly(self):
+        def fn_with_varargs_kwargs_and_kwonly(
+                arg1: int, *args: int, arg2: str = 'x', **kw: int
+            ) -> None:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_varargs_kwargs_and_kwonly)
+        expected = (
+            "- `fn_with_varargs_kwargs_and_kwonly(arg1: int, *args: int, "
+            "arg2: str = 'x', **kw: int) -> None:`"
+            "\nDoes a thing, returns some stuff.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_annotations_with_positional_only(self):
+        def fn_with_positional_only(arg1: int, /, arg2: str = 'x') -> None:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_positional_only)
+        expected = (
+            "- `fn_with_positional_only(arg1: int, /, arg2: str = 'x')"
+            " -> None:` Does a\nthing, returns some stuff.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_annotations_with_kwonly_without_default(self):
+        def fn_with_kwonly(arg1: int, *, arg2: str) -> None:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_kwonly)
+        expected = (
+            "- `fn_with_kwonly(arg1: int, *, arg2: str) -> None:`"
+            " Does a thing, returns some\nstuff.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_annotations_with_unannotated_params(self):
+        def fn_with_unannotated(arg1, arg2: int = 1) -> None:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_unannotated)
+        expected = (
+            "- `fn_with_unannotated(arg1, arg2: int = 1) -> None:`"
+            " Does a thing, returns some\nstuff.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_annotations_with_unannotated_variadic(self):
+        def fn_with_unannotated_variadic(arg1, *args, **kwargs) -> None:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_unannotated_variadic)
+        expected = (
+            "- `fn_with_unannotated_variadic(arg1, *args, **kwargs)"
+            " -> None:` Does a thing,\nreturns some stuff.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_annotations_with_trailing_positional_only(self):
+        def fn_with_trailing_positional_only(arg1: int, /) -> None:
+            """Does a thing, returns some stuff."""
+            ...
+
+        doc = functions.dox_a_function(fn_with_trailing_positional_only)
+        expected = (
+            "- `fn_with_trailing_positional_only(arg1: int, /) -> None:`"
+            " Does a thing,\nreturns some stuff.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_annotations_with_annotated_self(self):
+        class WithAnnotatedSelf:
+            """An example class."""
+
+            def method(self: WithAnnotatedSelf, x: int) -> None:
+                """Does a thing, returns some stuff."""
+                ...
+
+        doc = functions.dox_a_function(WithAnnotatedSelf.method)
+        expected = (
+            "- `method(x: int) -> None:` Does a thing, returns some stuff.\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
 
 class TestDoxAClass(unittest.TestCase):
     def test_dox_a_class(self):

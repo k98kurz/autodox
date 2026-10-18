@@ -1,5 +1,32 @@
 # Memory
 
+## Render signatures from `inspect.signature`, not annotation metadata
+
+`dox_a_function` must build signatures from `inspect.signature` /
+`inspect.Parameter` (`kind`, `annotation`, `default`, `Parameter.empty`), not
+from `__annotations__`, `__defaults__`, or `__kwdefaults__`:
+
+- `__annotations__` is not in declaration order when positional-only parameters
+  exist (e.g. `def f(arg1, /, arg2)` yields `{'arg2': ..., 'arg1': ...}`), and
+  parameter kinds (positional-only, keyword-only, variadic) are not encoded in
+  it at all, so order and `/` placement cannot be recovered
+- variadic parameters (`*args`/`**kwargs`) appear in `__annotations__` but never
+  in `__defaults__`/`__kwdefaults__`, so offset-based default alignment
+  misattaches defaults to later parameters
+
+The only legitimate use of `__annotations__` is the `return` fallback in
+`_signature_parts`, taken when `signature()` raises `TypeError`/`ValueError`.
+
+Pitfalls verified on 3.10-3.12:
+
+- `signature()` raises `TypeError` on raw `classmethod` descriptors; unwrap
+  `__func__` first (see `_signature_parts`). Raw `staticmethod` descriptors and
+  bound methods inspect fine, and bound methods already exclude the bound
+  parameter
+- with `from __future__ import annotations` (PEP 563), annotations come back as
+  strings and render verbatim; without it, `dict[str, str].__name__` is `'dict'`,
+  so prefer `str(annotation)` whenever it contains `[` (see `_annotation_str`)
+
 ## Alias detection is namespace-scoped
 
 Aliases (e.g. `UsageError = DependencyError` at module scope, or `bar = foo` in a

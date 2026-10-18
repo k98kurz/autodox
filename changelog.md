@@ -4,6 +4,10 @@
   - Class, function, and method aliases are now detected automatically and
     documented as `Alias = Target` instead of appearing as duplicates of the
     target
+  - Function and method signatures now render the full parameter list in
+    declaration order with correct defaults, `*args`/`**kwargs` markers,
+    properly placed `/` and `*` separators, and preserved `None`/subscripted
+    (e.g. `dict[str, str]`) annotations
 
 ## 0.1.16
 
