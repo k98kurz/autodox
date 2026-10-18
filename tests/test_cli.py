@@ -96,6 +96,8 @@ class TestCli(unittest.TestCase):
             '--include-dunder',
             '--include-submodules',
             '--document-submodules',
+            '--no-backtick-names',
+            '--no-backtick-types',
             '--debug', '--debug',
         ]
 
@@ -117,6 +119,8 @@ class TestCli(unittest.TestCase):
             'include_dunder': True,
             'include_submodules': True,
             'document_submodules': True,
+            'backtick_names': False,
+            'backtick_types': False,
         }, captured['options']
         assert 'depth-one' in err, err
         assert 'depth-two' in err, err

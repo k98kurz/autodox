@@ -290,20 +290,27 @@ def dox_a_value(value: Any, options: dict | None = None) -> str:
     value, options = _invoke_handler(Event.BEFORE_VALUE, value, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
+    backtick_names = (
+        options['backtick_names'] if 'backtick_names' in options else True
+    )
+    backtick_types = (
+        options['backtick_types'] if 'backtick_types' in options else True
+    )
 
     name = value.__name__ if hasattr(value, '__name__') else '{unknown/unnamed}'
     if 'name' in options:
         name = options['name']
-    type_str = type(value).__name__
+    name = _backtick(name, backtick_names)
+    type_str = _backtick(type(value).__name__, backtick_types)
     doc = ''
 
     match format:
         case 'header':
-            doc = _header(f'`{name}`: {type_str}', header_level)
+            doc = _header(f'{name}: {type_str}', header_level)
         case 'paragraph':
-            doc = _paragraph(f'`{name}`: {type_str}', options)
+            doc = _paragraph(f'{name}: {type_str}', options)
         case _:
-            doc = _list(f'`{name}`: {type_str}')
+            doc = _list(f'{name}: {type_str}')
 
     return _invoke_handler(Event.AFTER_VALUE, doc)
 
@@ -316,6 +323,11 @@ def _annotation_str(annotation: Any) -> str:
     if '[' in text:
         return text
     return annotation.__name__ if hasattr(annotation, '__name__') else text
+
+
+def _backtick(text: str, enabled: bool) -> str:
+    """Wraps `text` in backticks when `enabled` is True."""
+    return f'`{text}`' if enabled else text
 
 
 def _param_str(param: Parameter) -> str:
@@ -650,6 +662,12 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
     header_level = options['header_level'] if 'header_level' in options else 0
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
+    backtick_names = (
+        options['backtick_names'] if 'backtick_names' in options else True
+    )
+    backtick_types = (
+        options['backtick_types'] if 'backtick_types' in options else True
+    )
     suboptions = {**options, 'header_level': header_level + 1}
 
     classname = (
@@ -709,7 +727,9 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
     if annotations:
         doc += _header('Annotations', header_level + 1)
         for name, value in annotations.items():
-            doc += _list(f'{name}: {_annotation_str(value)}')
+            name_str = _backtick(name, backtick_names)
+            type_str = _backtick(_annotation_str(value), backtick_types)
+            doc += _list(f'{name_str}: {type_str}')
         doc += '\n'
 
     if properties:

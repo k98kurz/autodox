@@ -73,6 +73,16 @@ def _build_parser(prog: str) -> ArgumentParser:
         help='runs module documentation for submodules'
     )
     parser.add_argument(
+        '--no-backtick-names', dest='backtick_names', action='store_false',
+        default=None,
+        help='do not wrap annotation or value names in backticks'
+    )
+    parser.add_argument(
+        '--no-backtick-types', dest='backtick_types', action='store_false',
+        default=None,
+        help='do not wrap annotation or value types in backticks'
+    )
+    parser.add_argument(
         '--debug', action='count', default=0,
         help=(
             'increases level of debug statements printed to stderr; starts at '
@@ -109,6 +119,10 @@ def _settings_from(options: Namespace) -> dict:
         settings['include_submodules'] = True
     if options.document_submodules:
         settings['document_submodules'] = True
+    if options.backtick_names is not None:
+        settings['backtick_names'] = options.backtick_names
+    if options.backtick_types is not None:
+        settings['backtick_types'] = options.backtick_types
     return settings
 
 

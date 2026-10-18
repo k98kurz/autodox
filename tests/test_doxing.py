@@ -399,9 +399,9 @@ An example class to document.
 
 ## Annotations
 
-- clock_uuid: bytes
-- ts: Any
-- data: Hashable
+- `clock_uuid`: `bytes`
+- `ts`: `Any`
+- `data`: `Hashable`
 
 ## Properties
 
@@ -446,9 +446,9 @@ An example class to document.
 
 ## Annotations
 
-- clock_uuid: bytes
-- ts: Any
-- data: Hashable
+- `clock_uuid`: `bytes`
+- `ts`: `Any`
+- `data`: `Hashable`
 
 ## Properties
 
@@ -496,9 +496,9 @@ An example class to document.
 
 ## Annotations
 
-- clock_uuid: bytes
-- ts: Any
-- data: Hashable
+- `clock_uuid`: `bytes`
+- `ts`: `Any`
+- `data`: `Hashable`
 
 ## Properties
 
@@ -550,9 +550,9 @@ An example class to document.
 
 ## Annotations
 
-- clock_uuid: bytes
-- ts: Any
-- data: Hashable
+- `clock_uuid`: `bytes`
+- `ts`: `Any`
+- `data`: `Hashable`
 
 ## Properties
 
@@ -596,7 +596,7 @@ class TestDoxAClassAnnotations(unittest.TestCase):
     def test_private_annotations_excluded_by_default(self):
         doc = functions.dox_a_class(AnnotationExample)
 
-        assert '- public_attr: int' in doc, doc
+        assert '- `public_attr`: `int`' in doc, doc
         assert '_private_attr' not in doc, doc
         assert '__mangled_private' not in doc, doc
         assert '_AnnotationExample__mangled_private' not in doc, doc
@@ -609,8 +609,8 @@ class TestDoxAClassAnnotations(unittest.TestCase):
             AnnotationExample, {'include_private': True}
         )
 
-        assert '- _private_attr: str' in private, private
-        assert '- __mangled_private: bytes' in private, private
+        assert '- `_private_attr`: `str`' in private, private
+        assert '- `__mangled_private`: `bytes`' in private, private
         assert '- __mangled_property: Mangled property.' in private, private
         assert '_AnnotationExample__mangled_private' not in private, private
         assert '_AnnotationExample__mangled_property' not in private, private
@@ -620,7 +620,7 @@ class TestDoxAClassAnnotations(unittest.TestCase):
             AnnotationExample, {'include_dunder': True}
         )
 
-        assert '- __dunder__: object' in dunder, dunder
+        assert '- `__dunder__`: `object`' in dunder, dunder
         assert '_private_attr' not in dunder, dunder
         assert '__mangled_private' not in dunder, dunder
         assert '__mangled_property' not in dunder, dunder
@@ -628,10 +628,10 @@ class TestDoxAClassAnnotations(unittest.TestCase):
         options = {'include_private': True, 'include_dunder': True}
         both = functions.dox_a_class(AnnotationExample, options)
 
-        assert '- _private_attr: str' in both, both
-        assert '- __mangled_private: bytes' in both, both
+        assert '- `_private_attr`: `str`' in both, both
+        assert '- `__mangled_private`: `bytes`' in both, both
         assert '- __mangled_property: Mangled property.' in both, both
-        assert '- __dunder__: object' in both, both
+        assert '- `__dunder__`: `object`' in both, both
         assert '_AnnotationExample__mangled_private' not in both, both
         assert '_AnnotationExample__mangled_property' not in both, both
 
@@ -656,8 +656,8 @@ class TestDoxAClassAnnotations(unittest.TestCase):
     def test_inherited_private_annotations_are_filtered(self):
         doc = functions.dox_a_class(AnnotatedChild)
 
-        assert 'base_public: int' in doc, doc
-        assert 'child_public: str' in doc, doc
+        assert '`base_public`: `int`' in doc, doc
+        assert '`child_public`: `str`' in doc, doc
         assert '_base_private' not in doc, doc
         assert '_child_private' not in doc, doc
         assert '__base_secret' not in doc, doc
@@ -667,10 +667,10 @@ class TestDoxAClassAnnotations(unittest.TestCase):
             AnnotatedChild, {'include_private': True}
         )
 
-        assert '_base_private: int' in doc, doc
-        assert '_child_private: str' in doc, doc
-        assert '- __base_secret: bytes' in doc, doc
-        assert '- __child_secret: int' in doc, doc
+        assert '`_base_private`: `int`' in doc, doc
+        assert '`_child_private`: `str`' in doc, doc
+        assert '- `__base_secret`: `bytes`' in doc, doc
+        assert '- `__child_secret`: `int`' in doc, doc
         assert '_AnnotatedBase__base_secret' not in doc, doc
         assert '_AnnotatedChild__child_secret' not in doc, doc
 
@@ -697,14 +697,81 @@ class TestDoxAClassAnnotations(unittest.TestCase):
         }
         doc = functions.dox_a_class(RealTypes)
 
-        assert '- public_attr: int' in doc, doc
-        assert '- mapping: dict[str, str]' in doc, doc
+        assert '- `public_attr`: `int`' in doc, doc
+        assert '- `mapping`: `dict[str, str]`' in doc, doc
         assert '_private_attr' not in doc, doc
 
         doc = functions.dox_a_class(RealTypes, {'include_private': True})
 
-        assert '- _private_attr: str' in doc, doc
+        assert '- `_private_attr`: `str`' in doc, doc
         assert "<class 'int'>" not in doc, doc
+
+    def test_annotations_are_backticked_by_default(self):
+        doc = functions.dox_a_class(AnnotationExample)
+
+        assert '- `public_attr`: `int`' in doc, doc
+
+    def test_backtick_names_can_be_disabled(self):
+        doc = functions.dox_a_class(
+            AnnotationExample, {'backtick_names': False}
+        )
+
+        assert '- public_attr: `int`' in doc, doc
+        assert '- `public_attr`' not in doc, doc
+
+    def test_backtick_types_can_be_disabled(self):
+        doc = functions.dox_a_class(
+            AnnotationExample, {'backtick_types': False}
+        )
+
+        assert '- `public_attr`: int' in doc, doc
+        assert '- `public_attr`: `int`' not in doc, doc
+
+    def test_backtick_names_and_types_can_both_be_disabled(self):
+        options = {'backtick_names': False, 'backtick_types': False}
+        doc = functions.dox_a_class(AnnotationExample, options)
+
+        assert '- public_attr: int' in doc, doc
+        assert '`public_attr`' not in doc, doc
+        assert '`int`' not in doc, doc
+
+
+class TestDoxAValue(unittest.TestCase):
+    def test_value_type_is_backticked_by_default(self):
+        doc = functions.dox_a_value(1, {'name': 'x'})
+
+        assert doc == '- `x`: `int`\n', doc
+
+    def test_backtick_names_can_be_disabled(self):
+        options = {'name': 'x', 'backtick_names': False}
+        doc = functions.dox_a_value(1, options)
+
+        assert doc == '- x: `int`\n', doc
+
+    def test_backtick_types_can_be_disabled(self):
+        options = {'name': 'x', 'backtick_types': False}
+        doc = functions.dox_a_value(1, options)
+
+        assert doc == '- `x`: int\n', doc
+
+    def test_backtick_names_and_types_can_both_be_disabled(self):
+        options = {
+            'name': 'x', 'backtick_names': False, 'backtick_types': False,
+        }
+        doc = functions.dox_a_value(1, options)
+
+        assert doc == '- x: int\n', doc
+
+    def test_header_and_paragraph_formats_respect_backtick_options(self):
+        options = {
+            'name': 'x', 'header_level': 1,
+            'backtick_names': False, 'backtick_types': False,
+        }
+        options['format'] = 'header'
+        assert functions.dox_a_value(1, options) == '## x: int\n\n'
+
+        options['format'] = 'paragraph'
+        assert functions.dox_a_value(1, options) == 'x: int\n\n'
 
 
 class TestDoxAProtocol(unittest.TestCase):
