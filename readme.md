@@ -12,6 +12,13 @@ and docstrings.
 
 ## Usage
 
+Note that autodox imports the module being documented, so it must be
+installed in the same Python environment as the target module. If autodox
+is installed at the system or user level while the target module lives in
+a virtual environment, the autodox CLI will not be able to import it.
+Install autodox inside the target module's environment (e.g. activate the
+virtualenv and run `pip install autodox` there) before documenting it.
+
 ### Installation
 
 ```bash
