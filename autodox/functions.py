@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 
 class Event(Enum):
+    """Valid events for the hook system."""
     AFTER_HEADER = auto()
     AFTER_PARAGRAPH = auto()
     AFTER_LIST = auto()
@@ -327,6 +328,24 @@ def _param_str(param: Parameter) -> str:
     return text
 
 
+def _has_implicit_receiver(function: Callable) -> bool:
+    """Returns whether the parameters include an implicit receiver
+        (`self`/`cls`) to omit. Raw `classmethod` descriptors and
+        functions defined in a class body qualify; bound methods,
+        module-level functions, and functions in `<locals>` or
+        comprehension scopes do not. A `staticmethod` reached through
+        its class looks like an unbound method, so pass the raw
+        descriptor from the class `__dict__` for an accurate result.
+    """
+    if isinstance(function, classmethod):
+        return True
+    if not isinstance(function, FunctionType):
+        return False
+    qualname = getattr(function, '__qualname__', '')
+    scope, _, _ = qualname.rpartition('.')
+    return bool(scope) and not scope.rpartition('.')[2].startswith('<')
+
+
 def _signature_parts(function: Callable) -> tuple[list[Parameter], Any]:
     """Extracts the parameters and return annotation from the signature
         of a function. Raw `classmethod` descriptors, which cannot be
@@ -363,13 +382,17 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
         function.__name__ if hasattr(function, '__name__') else '{unknown/unnamed}'
     )
     params, return_annotation = _signature_parts(function)
+    has_receiver = _has_implicit_receiver(function)
 
     parts = []
     pos_only_rendered, slash_emitted = False, False
     star_emitted, varargs_rendered = False, False
 
     for position, param in enumerate(params):
-        if position == 0 and param.name in ('self', 'cls'):
+        if  (   position == 0
+                and has_receiver
+                and param.name in ('self', 'cls')
+            ):
             continue
 
         if  (   param.kind is not Parameter.POSITIONAL_ONLY
@@ -594,9 +617,8 @@ def _get_all_annotations(cls: type) -> dict:
 
 def dox_a_class(cls: type, options: dict = {}) -> str:
     """Collects some information about a class and returns a formatted
-        str. Any names specified in options['exclude_names'] and any
-        types specified in options['exclude_types'] will be excluded.
-        Private and dunder methods/properties will be included if
+        str. Any names specified in options['exclude_names'] will be
+        excluded. Private and dunder members will be included if
         options['include_private'] or options['include_dunder'] are
         specified, respectively.
     """

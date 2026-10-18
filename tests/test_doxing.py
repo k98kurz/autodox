@@ -374,6 +374,20 @@ class TestDoxAFunction(unittest.TestCase):
             f"expected {{\n{expected}}} but got {{\n{doc}}}"
         )
 
+    def test_dox_a_class_signature_includes_cls(self):
+        doc = functions.dox_a_function(functions.dox_a_class)
+        assert '`dox_a_class(cls: type, options: dict = {}) -> str:`' in doc, (
+            f"expected signature with cls but got {{\n{doc}}}"
+        )
+
+    def test_lambda_in_generator_expression_is_not_a_method(self):
+        fn = next(lambda self: self for _ in range(1))
+        doc = functions.dox_a_function(fn)
+        expected = '- `<lambda>(self):`\n'
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
 
 class TestDoxAClass(unittest.TestCase):
     def test_dox_a_class(self):
@@ -866,7 +880,7 @@ Resolve a dependency.
             cm_alias = cm
 
             @staticmethod
-            def sm() -> None:
+            def sm(cls) -> None:
                 """Do sm."""
                 ...
 
@@ -878,7 +892,7 @@ Resolve a dependency.
         assert '### `bar = foo`' in observed, observed
         assert observed.count('### `@classmethod cm() -> None:`') == 1, observed
         assert '### `cm_alias = cm`' in observed, observed
-        assert observed.count('### `@staticmethod sm() -> None:`') == 1, observed
+        assert observed.count('### `@staticmethod sm(cls) -> None:`') == 1, observed
         assert '### `sm_alias = sm`' in observed, observed
 
     def test_method_alias_to_private_target(self):
