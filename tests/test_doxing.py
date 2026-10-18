@@ -376,7 +376,8 @@ class TestDoxAFunction(unittest.TestCase):
 
     def test_dox_a_class_signature_includes_cls(self):
         doc = functions.dox_a_function(functions.dox_a_class)
-        assert '`dox_a_class(cls: type, options: dict = {}) -> str:`' in doc, (
+        expected = '`dox_a_class(cls: type, options: dict | None = None) -> str:`'
+        assert expected in doc, (
             f"expected signature with cls but got {{\n{doc}}}"
         )
 

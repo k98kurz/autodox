@@ -1,5 +1,4 @@
 from __future__ import annotations
-from __future__ import annotations
 from autodox import functions
 from enum import Enum
 import unittest
@@ -190,6 +189,27 @@ class TestHooks(unittest.TestCase):
         )
         after = functions.dox_a_value(val)
         assert after == before + 'AFTER1 AFTER2 AFTER3'
+
+
+    def test_before_handler_mutations_do_not_leak_between_calls(self):
+        seen = []
+
+        def handle(module, options):
+            options['_calls'] = options.get('_calls', 0) + 1
+            seen.append(options['_calls'])
+            return module, options
+
+        functions.set_before_handler(
+            functions.Event.BEFORE_MODULE,
+            handle
+        )
+
+        _ = functions.dox_a_module(functions)
+        _ = functions.dox_a_module(functions)
+
+        assert seen == [1, 1], (
+            f"expected fresh options per call but saw {seen}"
+        )
 
 
 if __name__ == '__main__':

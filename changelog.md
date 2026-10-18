@@ -15,6 +15,9 @@
   - Name-mangled private annotations and properties are displayed under their
     source names (e.g. `__hidden` instead of `_Class__hidden`), and
     `exclude_names` accepts either form
+  - The `dox_a_*` functions' `options` parameter now defaults to `None`
+    instead of a shared mutable `{}`, preventing a `BEFORE_` handler that
+    mutates `options` in place from leaking state into later calls
 
 ## 0.1.16
 

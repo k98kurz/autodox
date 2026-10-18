@@ -98,13 +98,14 @@ def _header(line: str, header_level: int = 0) -> str:
     return _invoke_handler(Event.AFTER_HEADER, doc)
 
 
-def _paragraph(docstring: str, options: dict = {}) -> str:
+def _paragraph(docstring: str, options: dict | None = None) -> str:
     """Takes a docstring, tokenizes it, and returns a str formatted to
         80 chars (default, or `options['line_length']`) or fewer per
         line without splitting tokens; tokens that stretch beyond the
         char limit are preserved on their own lines.
     """
     _debug(2, '_paragraph(', docstring, ')')
+    options = options or {}
     line_length = options.get('line_length', 80)
     def make_line(tokens: list[str]) -> tuple[str, list[str]]:
         _debug(2, 'make_line(', tokens, ')')
@@ -130,7 +131,7 @@ def _paragraph(docstring: str, options: dict = {}) -> str:
     return _invoke_handler(Event.AFTER_PARAGRAPH, doc)
 
 
-def _list(line: str, options: dict = {}) -> str:
+def _list(line: str, options: dict | None = None) -> str:
     """Takes a line and returns a formatted list item."""
     _debug(2, '_list(', line, ')')
     doc = _paragraph(f'- {line}', options)[:-1]
@@ -166,7 +167,7 @@ def _dox_alias(
             return _list(alias)
 
 
-def dox_a_module(module: ModuleType, options: dict = {}) -> str:
+def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
     """Iterates over a module, collects information about its parts, and
         returns a str containing markdown documentation generated from
         types, annotations, and docstrings.
@@ -175,6 +176,7 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
         1, 'dox_a_module(',
         getattr(module, '__name__', '[unnamed]'), options, ')'
     )
+    options = options or {}
     module, options = _invoke_handler(Event.BEFORE_MODULE, module, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     exclude_types = options['exclude_types'] if 'exclude_types' in options else []
@@ -268,11 +270,12 @@ def dox_a_module(module: ModuleType, options: dict = {}) -> str:
     return _invoke_handler(Event.AFTER_MODULE, doc)
 
 
-def dox_a_value(value: Any, options: dict = {}) -> str:
+def dox_a_value(value: Any, options: dict | None = None) -> str:
     """Collects some information about a value and returns it formatted
         as specified in the options or as a list.
     """
     _debug(1, 'dox_a_value(', value, options, ')')
+    options = options or {}
     value, options = _invoke_handler(Event.BEFORE_VALUE, value, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
@@ -364,7 +367,7 @@ def _signature_parts(function: Callable) -> tuple[list[Parameter], Any]:
         return [], annotations.get('return', Parameter.empty)
 
 
-def dox_a_function(function: Callable, options: dict = {}) -> str:
+def dox_a_function(function: Callable, options: dict | None = None) -> str:
     """Collects some information about a function and returns it
         formatted as specified in the options or as a list.
     """
@@ -372,6 +375,7 @@ def dox_a_function(function: Callable, options: dict = {}) -> str:
         1, 'dox_a_function(',
         getattr(function, '__name__', '[unnamed function]'), options, ')'
     )
+    options = options or {}
     function, options = _invoke_handler(Event.BEFORE_FUNCTION, function, options)
     header_level = options['header_level'] if 'header_level' in options else 0
     format = options['format'] if 'format' in options else 'list'
@@ -542,12 +546,13 @@ def _dox_properties(
     return doc
 
 
-def _dox_methods(cls: type, methods: dict, options: dict = {}) -> str:
+def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
     """Format a collection of methods/functions."""
     _debug(
         1, '_dox_methods(',
         getattr(cls, '__name__', '[unnamed class]'), methods, options, ')'
     )
+    options = options or {}
     header_level = options['header_level'] if 'header_level' in options else 0
     header_level += 1
     suboptions = {**options, 'header_level': header_level}
@@ -617,7 +622,7 @@ def _get_all_annotations(cls: type) -> dict:
     return annotations
 
 
-def dox_a_class(cls: type, options: dict = {}) -> str:
+def dox_a_class(cls: type, options: dict | None = None) -> str:
     """Collects some information about a class and returns a formatted
         str. Any names specified in options['exclude_names'] will be
         excluded. Private and dunder members will be included if
@@ -628,6 +633,7 @@ def dox_a_class(cls: type, options: dict = {}) -> str:
         1, 'dox_a_class(',
         getattr(cls, '__name__', '[unnamed class]'), options, ')'
     )
+    options = options or {}
     cls, options = _invoke_handler(Event.BEFORE_CLASS, cls, options)
     exclude_names = options['exclude_names'] if 'exclude_names' in options else []
     header_level = options['header_level'] if 'header_level' in options else 0

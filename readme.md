@@ -67,17 +67,17 @@ autodox autodox [options]
 The autodox package can also be used by importing and running the desired
 documentation function(s). The following are included.
 
-- `dox_a_module(module: ModuleType, options: dict = {}) -> str` produces docs for a module
-- `dox_a_value(value: Any, options: dict = {}) -> str` produces docs for a value
-- `dox_a_function(function: Callable, options: dict = {}) -> str` produces docs for a function
-- `dox_a_class(cls: type, options: dict = {}) -> str` produces docs for a class
+- `dox_a_module(module: ModuleType, options: dict | None = None) -> str` produces docs for a module
+- `dox_a_value(value: Any, options: dict | None = None) -> str` produces docs for a value
+- `dox_a_function(function: Callable, options: dict | None = None) -> str` produces docs for a function
+- `dox_a_class(cls: type, options: dict | None = None) -> str` produces docs for a class
 
 The valid options for each will be described below. Additionally, there is a
 system for setting up hooks that interact with the doc generation process to
 change the inputs or outputs, and that will be described below the options for
 the four `dox_a_{thing}` functions.
 
-#### `dox_a_module(module: ModuleType, options: dict = {}) -> str`
+#### `dox_a_module(module: ModuleType, options: dict | None = None) -> str`
 
 Produces docs for a module. Valid options are the following:
 
@@ -105,7 +105,7 @@ alias is only detected when the target is bound under its `__name__` in the
 same namespace: aliases of builtins, inherited methods, renamed imports, and
 name-mangled targets are documented under their `__name__` instead.
 
-#### `dox_a_value(value: Any, options: dict = {}) -> str`
+#### `dox_a_value(value: Any, options: dict | None = None) -> str`
 
 Produces docs for a value. Valid options are the following:
 
@@ -114,7 +114,7 @@ Produces docs for a value. Valid options are the following:
 - `name: str` - overrides the name used in the docs (the module binding name)
 - `line_length: int` - number of chars per line in paragraphs
 
-#### `dox_a_function(function: Callable, options: dict = {}) -> str`
+#### `dox_a_function(function: Callable, options: dict | None = None) -> str`
 
 Produces docs for a function. Valid options are the following:
 
@@ -123,7 +123,7 @@ Produces docs for a function. Valid options are the following:
 - `prepend: str` - text prepended to the signature (used for decorators)
 - `line_length: int` - number of chars per line in paragraphs
 
-#### `dox_a_class(cls: type, options: dict = {}) -> str`
+#### `dox_a_class(cls: type, options: dict | None = None) -> str`
 
 Produces docs for a class. Valid options are the following:
 
@@ -206,8 +206,9 @@ set_after_handler(Event.AFTER_LIST, world)
 
 ## Testing
 
-The test suite covers the hook system and documentation edge cases using the
-standard library `unittest` module.
+The test suite uses the standard library `unittest` module and covers the hook
+system and the generated documentation, including signature rendering, class
+annotations, protocols, and alias detection.
 
 To run it, clone the repository and run the following:
 
