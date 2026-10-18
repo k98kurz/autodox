@@ -100,7 +100,9 @@ def _header(line: str, header_level: int = 0) -> str:
 
 def _paragraph(docstring: str, options: dict = {}) -> str:
     """Takes a docstring, tokenizes it, and returns a str formatted to
-        72 chars or fewer per line without splitting tokens.
+        80 chars (default, or `options['line_length']`) or fewer per
+        line without splitting tokens; tokens that stretch beyond the
+        char limit are preserved on their own lines.
     """
     _debug(2, '_paragraph(', docstring, ')')
     line_length = options.get('line_length', 80)
