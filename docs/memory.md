@@ -69,3 +69,21 @@ Filter and display them as follows, or the two paths silently diverge:
   a mangled `__name`; prefer the unmangled display
 - dedupe annotation display names after unmangling, since a base and child can
   each define `__name` under different stored keys
+
+## Build hook: `version` is the builder version, not the project version
+
+In a hatchling build hook (`scripts/hatch_build.py`, plugin `custom`),
+`initialize(version, build_data)` receives the **builder version** —
+`'standard'` for sdist/wheel builds, `'editable'` for PEP 660 editable
+installs — not the project version. Gating on it silently fails
+(`'dev' not in 'standard'`). Read `self.metadata.version` instead (the
+normalized version, e.g. `0.2.0.dev0` for a `0.2.0-dev` source;
+`original_version` keeps the raw string) and gate on the `dev` substring,
+not the literal `-dev`.
+
+The sdist always includes `pyproject.toml` even with `only-include`, but not
+the hook script. Since `python -m build` rebuilds the wheel from the sdist,
+`scripts/hatch_build.py` MUST be in `[tool.hatch.build.targets.sdist]
+only-include` or release builds fail with a missing-hook error. Registering
+the hook globally makes the sdist step itself fail, rather than leaving a
+stray sdist before the wheel step fails.

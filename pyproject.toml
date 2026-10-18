@@ -28,6 +28,9 @@ classifiers = [
 [project.scripts]
 autodox = "autodox.cli:main_cli"
 
+[tool.hatch.build.hooks.custom]
+path = "scripts/hatch_build.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["autodox"]
 
@@ -36,4 +39,5 @@ only-include = [
   "autodox",
   "changelog.md",
   "dox.md",
+  "scripts/hatch_build.py",
 ]
