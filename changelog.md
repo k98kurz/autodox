@@ -23,6 +23,14 @@
   aliases, and PEP 695 `type` aliases are supported
 - `typing.NewType` values now render as `Name = NewType('Name', Supertype)`
   instead of `Name: NewType`
+- Functions and methods wrapped by decorators exposing `__wrapped__` (e.g.
+  `functools.lru_cache` and `functools.cache`) are now documented with their
+  real signatures and docstrings instead of appearing as values; cached
+  methods are no longer omitted, and classes wrapped by such decorators are
+  documented as classes instead of values
+- Async static methods now include the `async` marker, including when wrapped
+  by `functools.lru_cache` or `functools.cache`; wrappers around
+  `classmethod` no longer show an implicit `cls` parameter
 - Added a `clean_type_aliases` option and `--no-clean-type-aliases` CLI flag to
   keep module qualifiers in rendered type alias definitions; cleanup is on by
   default and never rewrites string literals such as `Literal['typing.Foo']`

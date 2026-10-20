@@ -148,3 +148,37 @@ Detect `typing.NewType` values with `callable(value) and hasattr(value,
 class since 3.10, so its instances are not types. Render them as
 `Name = NewType('Name', Supertype)` using `_annotation_str(value.__supertype__)`
 so the supertype is cleaned like any other alias definition.
+
+## Recognize wrappers via `__wrapped__`, not the concrete wrapper type
+
+`functools.lru_cache`/`cache` return a `functools._lru_cache_wrapper`, not a
+`FunctionType`, so exact-type checks silently classify them as values and omit
+cached class methods entirely. Detect function-likeness with
+`_is_function_like`: `FunctionType`, `MethodType`, `classmethod`,
+`staticmethod`, or any callable exposing `__wrapped__`, but not types or
+wrapped classes. Use it at BOTH classification sites (`dox_a_module`'s function
+branch and `dox_a_class`'s method collection); do not classify all callables,
+because `functools.partial`, builtins, and `typing.NewType` must stay values.
+Route wrapped classes through `_wrapped_class` BEFORE `_is_function_like`;
+otherwise `@lru_cache` on a class documents the wrapper as a function and
+loses the class's methods.
+
+Unwrap wrappers with these helpers; each exists because a different unwrap
+strategy breaks a different case:
+
+- `_unwrap_function` follows `__wrapped__` and stops at
+  `classmethod`/`staticmethod` descriptors and on cycles
+- coroutine detection must use `_unwrap_for_inspection`, which continues
+  through descriptors: `iscoroutinefunction()` does not follow `__wrapped__`,
+  and descriptor-stopping hides async methods behind `staticmethod`
+- `_has_implicit_receiver` must keep its `MethodType` early return (bound
+  methods are already receiver-free), then unwrap with `_unwrap_function` and
+  branch on the descriptor kind: `classmethod` means omit the receiver,
+  `staticmethod` means do not. Not unwrapping at all documents `cls` on a
+  wrapped classmethod; unwrapping through descriptors instead makes a wrapped
+  staticmethod's underlying function look like a class-body function and drop
+  a `self`/`cls`-named first parameter
+- `_dox_methods` must classify the class binding with `_is_staticmethod` (via
+  `_unwrap_function`) instead of `isinstance(..., staticmethod)`: for
+  `@lru_cache` outside `@staticmethod` the binding is the wrapper, not a
+  `staticmethod` descriptor

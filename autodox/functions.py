@@ -152,6 +152,69 @@ def _list(line: str, options: dict | None = None) -> str:
     return _invoke_handler(Event.AFTER_LIST, doc)
 
 
+def _unwrap_function(function: Callable) -> Callable:
+    """Follows a `__wrapped__` chain to the underlying callable. Stops
+        at `classmethod`/`staticmethod` descriptors and at cycles so
+        wrapped functions can be inspected safely.
+    """
+    seen = set()
+    while True:
+        if isinstance(function, (classmethod, staticmethod)):
+            return function
+        wrapped = getattr(function, '__wrapped__', None)
+        if wrapped is None or id(function) in seen:
+            return function
+        seen.add(id(function))
+        function = wrapped
+
+
+def _unwrap_for_inspection(function: Callable) -> Any:
+    """Follows `__wrapped__` and descriptor `__func__` links to the
+        underlying callable so properties such as coroutine status can
+        be inspected. Unlike `_unwrap_function`, this does not stop at
+        `classmethod`/`staticmethod` descriptors.
+    """
+    function = _unwrap_function(function)
+    while isinstance(function, (classmethod, staticmethod)):
+        function = _unwrap_function(function.__func__)
+    return function
+
+
+def _is_function_like(item: Any) -> bool:
+    """Returns whether `item` should be documented as a function or
+        method. Plain functions, methods, and their raw descriptors
+        qualify, as do callables exposing `__wrapped__`, such as
+        `functools.lru_cache` wrappers. Classes, including wrapped
+        classes, do not qualify.
+    """
+    if isinstance(item, type):
+        return False
+    if isinstance(item, (FunctionType, MethodType, classmethod, staticmethod)):
+        return True
+    if not callable(item) or not hasattr(item, '__wrapped__'):
+        return False
+    return not isinstance(_unwrap_function(item), type)
+
+
+def _is_staticmethod(descriptor: Any) -> bool:
+    """Returns whether a class binding is a `staticmethod` descriptor,
+        including one wrapped by another decorator.
+    """
+    return isinstance(_unwrap_function(descriptor), staticmethod)
+
+
+def _wrapped_class(item: Any) -> type | None:
+    """Returns the class wrapped by `item`, or `item` itself when it is
+        already a class. Returns `None` for non-classes.
+    """
+    if isinstance(item, type):
+        return item
+    if not callable(item) or not hasattr(item, '__wrapped__'):
+        return None
+    unwrapped = _unwrap_function(item)
+    return unwrapped if isinstance(unwrapped, type) else None
+
+
 def _name_of(item: Any, fallback: str) -> str:
     """Returns the `__name__` of an item, unwrapping `__func__` so that
         raw `classmethod`/`staticmethod` objects resolve to the name of
@@ -159,7 +222,10 @@ def _name_of(item: Any, fallback: str) -> str:
         `__name__` is available.
     """
     func = getattr(item, '__func__', item)
-    return getattr(func, '__name__', fallback)
+    name = getattr(func, '__name__', None)
+    if name is None:
+        name = getattr(_unwrap_function(func), '__name__', None)
+    return name if name is not None else fallback
 
 
 def _dox_alias(
@@ -242,17 +308,18 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
             values.append(dox_a_value(item, value_options))
             continue
 
-        if isinstance(item, type):
+        cls = _wrapped_class(item)
+        if cls is not None:
             target = _name_of(item, name)
             if target != name and module.__dict__.get(target) is item:
                 doc = _dox_alias(name, target, header_level + 2, options=options)
             else:
-                doc = dox_a_class(item, suboptions)
+                doc = dox_a_class(cls, suboptions)
             if doc:
                 classes.append(doc)
             continue
 
-        if type(item) is type(dox_a_module):
+        if _is_function_like(item):
             target = _name_of(item, name)
             if target != name and module.__dict__.get(target) is item:
                 doc = _dox_alias(
@@ -493,15 +560,21 @@ def _param_str(param: Parameter) -> str:
 
 def _has_implicit_receiver(function: Callable) -> bool:
     """Returns whether the parameters include an implicit receiver
-        (`self`/`cls`) to omit. Raw `classmethod` descriptors and
-        functions defined in a class body qualify; bound methods,
-        module-level functions, and functions in `<locals>` or
-        comprehension scopes do not. A `staticmethod` reached through
-        its class looks like an unbound method, so pass the raw
+        (`self`/`cls`) to omit. Raw `classmethod` descriptors, even
+        when reached through a wrapper, and functions defined in a
+        class body qualify; raw `staticmethod` descriptors, bound
+        methods, module-level functions, and functions in `<locals>`
+        or comprehension scopes do not. A `staticmethod` reached
+        through its class looks like an unbound method, so pass the raw
         descriptor from the class `__dict__` for an accurate result.
     """
+    if isinstance(function, MethodType):
+        return False
+    function = _unwrap_function(function)
     if isinstance(function, classmethod):
         return True
+    if isinstance(function, staticmethod):
+        return False
     if not isinstance(function, FunctionType):
         return False
     qualname = getattr(function, '__qualname__', '')
@@ -540,7 +613,7 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
     prepend = options['prepend'] if 'prepend' in options else ''
     backtick_signatures = _backtick_enabled(options, 'backtick_signatures')
 
-    if iscoroutinefunction(function):
+    if iscoroutinefunction(_unwrap_for_inspection(function)):
         prepend = f'{prepend}async '
 
     name = (
@@ -753,7 +826,7 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
                     getattr(cls, name),
                     {**suboptions, 'format': format, 'prepend': '@classmethod '}
                 )
-            elif isinstance(cls.__dict__[name], staticmethod):
+            elif _is_staticmethod(cls.__dict__[name]):
                 doc += dox_a_function(
                     value,
                     {**suboptions, 'format': format, 'prepend': '@staticmethod '}
@@ -839,10 +912,13 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
             ):
             continue
 
-        if type(item) in (MethodType, FunctionType, staticmethod, classmethod):
+        if _is_function_like(item):
             # ignoring Protocol __init__ method overridden with an empty method
             # https://github.com/python/cpython/issues/110788
-            if name == '__init__' and item.__name__ == "_no_init_or_replace_init":
+            if  (   name == '__init__'
+                    and getattr(item, '__name__', '')
+                        == "_no_init_or_replace_init"
+                ):
                 continue
             methods[name] = item
 

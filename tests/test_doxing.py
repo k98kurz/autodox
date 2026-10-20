@@ -1,6 +1,7 @@
 from __future__ import annotations
 from autodox import functions
 from difflib import SequenceMatcher
+from functools import lru_cache, partial
 from types import ModuleType, FunctionType, MethodType
 from typing import (
     Any, Callable, Hashable, List, Literal, NewType, Optional, Protocol,
@@ -924,6 +925,293 @@ class TestTypeAliasValues(unittest.TestCase):
         )
 
         assert observed == '- `Handler = ...`\n', observed
+
+
+class TestWrappedCallables(unittest.TestCase):
+    def test_lru_cached_function_is_documented_as_function(self):
+        @lru_cache(maxsize=1024)
+        def levenshtein_distance(a: str, b: str = '') -> int:
+            """Calculate the distance."""
+            return 0
+
+        module = ModuleType('mymod')
+        module.levenshtein_distance = levenshtein_distance
+
+        observed = functions.dox_a_module(module)
+        expected = """# `mymod`
+
+## Functions
+
+### `levenshtein_distance(a: str, b: str = '') -> int:`
+
+Calculate the distance.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+        assert '_lru_cache_wrapper' not in observed, observed
+
+    def test_lru_cached_method_is_documented_as_method(self):
+        class CachedMethods:
+            @lru_cache(maxsize=None)
+            def cached(self, x: int) -> int:
+                """Cached method."""
+                return x
+
+        observed = functions.dox_a_class(CachedMethods)
+        expected = """# `CachedMethods`
+
+## Methods
+
+### `cached(x: int) -> int:`
+
+Cached method.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_lru_cached_classmethod_is_documented(self):
+        class CachedClassMethods:
+            @classmethod
+            @lru_cache(maxsize=None)
+            def cached(cls, x: int) -> int:
+                """Cached class method."""
+                return x
+
+        observed = functions.dox_a_class(CachedClassMethods)
+        expected = """# `CachedClassMethods`
+
+## Methods
+
+### `@classmethod cached(x: int) -> int:`
+
+Cached class method.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_lru_cached_staticmethod_is_documented(self):
+        class CachedStaticMethods:
+            @staticmethod
+            @lru_cache(maxsize=None)
+            def sm(x: int) -> int:
+                """Cached static method."""
+                return x
+
+        observed = functions.dox_a_class(CachedStaticMethods)
+        expected = """# `CachedStaticMethods`
+
+## Methods
+
+### `@staticmethod sm(x: int) -> int:`
+
+Cached static method.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_lru_cache_outer_staticmethod_is_documented(self):
+        class CachedStaticMethods:
+            @lru_cache(maxsize=None)
+            @staticmethod
+            def sm(x: int) -> int:
+                """Cached static method."""
+                return x
+
+        observed = functions.dox_a_class(CachedStaticMethods)
+        expected = """# `CachedStaticMethods`
+
+## Methods
+
+### `@staticmethod sm(x: int) -> int:`
+
+Cached static method.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_lru_cached_class_is_documented_as_class(self):
+        @lru_cache(maxsize=None)
+        class Cached:
+            """Cached class."""
+
+            def value(self) -> int:
+                """Value."""
+                return 1
+
+        module = ModuleType('mymod')
+        module.Cached = Cached
+
+        observed = functions.dox_a_module(module)
+        expected = """# `mymod`
+
+## Classes
+
+### `Cached`
+
+Cached class.
+
+#### Methods
+
+##### `value() -> int:`
+
+Value.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_async_staticmethod_has_async_prefix(self):
+        class AsyncStatic:
+            @staticmethod
+            async def sm(x: int) -> int:
+                """Async static."""
+                return x
+
+        observed = functions.dox_a_class(AsyncStatic)
+        expected = """# `AsyncStatic`
+
+## Methods
+
+### `@staticmethod async sm(x: int) -> int:`
+
+Async static.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_lru_cached_async_staticmethod_has_async_prefix(self):
+        class AsyncStatic:
+            @staticmethod
+            @lru_cache(maxsize=None)
+            async def sm(x: int) -> int:
+                """Async static."""
+                return x
+
+        observed = functions.dox_a_class(AsyncStatic)
+        expected = """# `AsyncStatic`
+
+## Methods
+
+### `@staticmethod async sm(x: int) -> int:`
+
+Async static.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_lru_cache_outer_async_staticmethod_has_async_prefix(self):
+        class AsyncStatic:
+            @lru_cache(maxsize=None)
+            @staticmethod
+            async def sm(x: int) -> int:
+                """Async static."""
+                return x
+
+        observed = functions.dox_a_class(AsyncStatic)
+        expected = """# `AsyncStatic`
+
+## Methods
+
+### `@staticmethod async sm(x: int) -> int:`
+
+Async static.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_wrapped_descriptors_have_correct_receiver(self):
+        def wrap(function):
+            def wrapper(*args, **kwargs):
+                return function(*args, **kwargs)
+            wrapper.__wrapped__ = function
+            return wrapper
+
+        class C:
+            @wrap
+            @classmethod
+            def cm(cls, x: int) -> int:
+                return x
+
+            @wrap
+            @staticmethod
+            def sm(x: int) -> int:
+                return x
+
+        cm = C.__dict__['cm']
+        sm = C.__dict__['sm']
+
+        assert functions._has_implicit_receiver(cm) is True, cm
+        assert functions._has_implicit_receiver(sm) is False, sm
+
+    def test_lru_cached_async_function_has_async_prefix(self):
+        @lru_cache(maxsize=None)
+        async def afn(x: int) -> int:
+            """Async cached."""
+            return x
+
+        module = ModuleType('mymod')
+        module.afn = afn
+
+        observed = functions.dox_a_module(module)
+        expected = """# `mymod`
+
+## Functions
+
+### `async afn(x: int) -> int:`
+
+Async cached.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
+    def test_callable_without_wrapped_is_still_a_value(self):
+        module = ModuleType('mymod')
+        module.partial_int = partial(int, base=2)
+
+        observed = functions.dox_a_module(module)
+
+        assert '## Functions' not in observed, observed
+        assert '- `partial_int`: `partial`' in observed, observed
+
+    def test_unwrap_function_stops_on_cycle(self):
+        class CyclicCallable:
+            def __call__(self, x: int) -> int:
+                """Cyclic."""
+                return x
+
+        cyclic = CyclicCallable()
+        cyclic.__wrapped__ = cyclic
+
+        assert functions._unwrap_function(cyclic) is cyclic, cyclic
 
 
 class TestDoxAProtocol(unittest.TestCase):
