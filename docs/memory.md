@@ -178,7 +178,9 @@ strategy breaks a different case:
   wrapped classmethod; unwrapping through descriptors instead makes a wrapped
   staticmethod's underlying function look like a class-body function and drop
   a `self`/`cls`-named first parameter
-- `_dox_methods` must classify the class binding with `_is_staticmethod` (via
-  `_unwrap_function`) instead of `isinstance(..., staticmethod)`: for
-  `@lru_cache` outside `@staticmethod` the binding is the wrapper, not a
-  `staticmethod` descriptor
+- `_dox_methods` must classify the class binding with `_is_classmethod` /
+  `_is_staticmethod` (via `_unwrap_function`) instead of
+  `isinstance(..., classmethod/staticmethod)`: an outer wrapper is not the
+  descriptor itself, so `isinstance` loses the `@classmethod`/`@staticmethod`
+  marker; for `@lru_cache` outside `@staticmethod` the binding is the wrapper,
+  not a `staticmethod` descriptor

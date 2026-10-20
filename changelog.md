@@ -30,7 +30,8 @@
   documented as classes instead of values
 - Async static methods now include the `async` marker, including when wrapped
   by `functools.lru_cache` or `functools.cache`; wrappers around
-  `classmethod` no longer show an implicit `cls` parameter
+  `classmethod` retain the `@classmethod` marker and no longer show an
+  implicit `cls` parameter
 - Added a `clean_type_aliases` option and `--no-clean-type-aliases` CLI flag to
   keep module qualifiers in rendered type alias definitions; cleanup is on by
   default and never rewrites string literals such as `Literal['typing.Foo']`

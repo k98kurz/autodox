@@ -1,7 +1,7 @@
 from __future__ import annotations
 from autodox import functions
 from difflib import SequenceMatcher
-from functools import lru_cache, partial
+from functools import lru_cache, partial, wraps
 from types import ModuleType, FunctionType, MethodType
 from typing import (
     Any, Callable, Hashable, List, Literal, NewType, Optional, Protocol,
@@ -1169,6 +1169,35 @@ Async static.
         assert functions._has_implicit_receiver(cm) is True, cm
         assert functions._has_implicit_receiver(sm) is False, sm
 
+    def test_wrapped_classmethod_has_classmethod_prefix(self):
+        def wrap(function):
+            @wraps(function)
+            def wrapper(*args, **kwargs):
+                return function(*args, **kwargs)
+            return wrapper
+
+        class C:
+            @wrap
+            @classmethod
+            def cm(cls, x: int) -> int:
+                """Wrapped class method."""
+                return x
+
+        observed = functions.dox_a_class(C)
+        expected = """# `C`
+
+## Methods
+
+### `@classmethod cm(x: int) -> int:`
+
+Wrapped class method.
+
+"""
+
+        assert observed == expected, (
+            f"expected {{\n{expected}}} but got {{\n{observed}}}"
+        )
+
     def test_lru_cached_async_function_has_async_prefix(self):
         @lru_cache(maxsize=None)
         async def afn(x: int) -> int:
@@ -1212,6 +1241,24 @@ Async cached.
         cyclic.__wrapped__ = cyclic
 
         assert functions._unwrap_function(cyclic) is cyclic, cyclic
+
+    def test_unwrap_for_inspection_stops_on_descriptor_cycle(self):
+        class CyclicDescriptor(classmethod):
+            def __init__(self, function):
+                super().__init__(function)
+                self.func_accesses = 0
+
+            @property
+            def __func__(self):
+                self.func_accesses += 1
+                assert self.func_accesses <= 10, (
+                    'descriptor cycle was not detected'
+                )
+                return self
+
+        cyclic = CyclicDescriptor(lambda x: x)
+
+        assert functions._unwrap_for_inspection(cyclic) is cyclic, cyclic
 
 
 class TestDoxAProtocol(unittest.TestCase):

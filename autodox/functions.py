@@ -172,10 +172,15 @@ def _unwrap_for_inspection(function: Callable) -> Any:
     """Follows `__wrapped__` and descriptor `__func__` links to the
         underlying callable so properties such as coroutine status can
         be inspected. Unlike `_unwrap_function`, this does not stop at
-        `classmethod`/`staticmethod` descriptors.
+        `classmethod`/`staticmethod` descriptors, but it does stop at
+        cycles.
     """
+    seen = set()
     function = _unwrap_function(function)
     while isinstance(function, (classmethod, staticmethod)):
+        if id(function) in seen:
+            return function
+        seen.add(id(function))
         function = _unwrap_function(function.__func__)
     return function
 
@@ -194,6 +199,13 @@ def _is_function_like(item: Any) -> bool:
     if not callable(item) or not hasattr(item, '__wrapped__'):
         return False
     return not isinstance(_unwrap_function(item), type)
+
+
+def _is_classmethod(descriptor: Any) -> bool:
+    """Returns whether a class binding is a `classmethod` descriptor,
+        including one wrapped by another decorator.
+    """
+    return isinstance(_unwrap_function(descriptor), classmethod)
 
 
 def _is_staticmethod(descriptor: Any) -> bool:
@@ -821,7 +833,7 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
             target = _name_of(value, name)
             if target != name and cls.__dict__.get(target) is value:
                 doc += _dox_alias(name, target, header_level, format, options)
-            elif isinstance(value, classmethod):
+            elif _is_classmethod(value):
                 doc += dox_a_function(
                     getattr(cls, name),
                     {**suboptions, 'format': format, 'prepend': '@classmethod '}
