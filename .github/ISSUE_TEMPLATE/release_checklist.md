@@ -14,7 +14,7 @@ assignees: k98kurz
 Once all other issues are complete, prepare to release the next version.
 
 - [ ] Review and update docstrings
-- [ ] Update dox.md
+- [ ] Update docs/dox.md
 - [ ] Update readme.md
 - [ ] Update changelog.md
 - [ ] Review and finalize documentation

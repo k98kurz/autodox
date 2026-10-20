@@ -223,7 +223,6 @@ class TestDoxAFunction(unittest.TestCase):
     def test_annotations_with_kwargs_and_defaults(self):
         class SqlQueryBuilder:
             """A query builder."""
-
             def order_by(
                     self, column: str = None, direction: str = 'desc',
                     **conditions: dict[str, str]
@@ -366,7 +365,6 @@ class TestDoxAFunction(unittest.TestCase):
     def test_annotations_with_annotated_self(self):
         class WithAnnotatedSelf:
             """An example class."""
-
             def method(self: WithAnnotatedSelf, x: int) -> None:
                 """Does a thing, returns some stuff."""
                 ...
@@ -1048,7 +1046,6 @@ Cached static method.
         @lru_cache(maxsize=None)
         class Cached:
             """Cached class."""
-
             def value(self) -> int:
                 """Value."""
                 return 1
@@ -1431,7 +1428,6 @@ Resolve a dependency.
     def test_method_aliases_are_not_duplicated(self):
         class AliasedMethods:
             """A class with method aliases."""
-
             def foo(self) -> None:
                 """Do foo."""
                 ...
@@ -1464,7 +1460,6 @@ Resolve a dependency.
     def test_method_alias_to_private_target(self):
         class C:
             """C."""
-
             def _foo(self) -> None:
                 """private foo."""
                 ...
@@ -1492,7 +1487,6 @@ C.
     def test_method_alias_to_private_descriptor_target(self):
         class C:
             """C."""
-
             @classmethod
             def _cm(cls) -> None:
                 """private cm."""
@@ -1526,7 +1520,6 @@ C.
     def test_method_alias_to_excluded_target(self):
         class C:
             """C."""
-
             def foo(self) -> None:
                 """foo."""
                 ...

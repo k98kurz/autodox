@@ -38,6 +38,7 @@ packages = ["autodox"]
 only-include = [
   "autodox",
   "changelog.md",
-  "dox.md",
+  "readme.md",
+  "docs/dox.md",
   "scripts/hatch_build.py",
 ]

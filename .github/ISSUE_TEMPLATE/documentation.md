@@ -14,7 +14,7 @@ assignees: k98kurz
 ## Documentation Files and Sections
 
 - readme.md: "Usage"
-- dox.md: "Functions > dox_a_function"
+- docs/dox.md: "Functions > dox_a_function"
 
 ## Discrepancies from Documentation Encountered
 

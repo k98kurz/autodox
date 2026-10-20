@@ -73,13 +73,11 @@ Filter and display them as follows, or the two paths silently diverge:
 
 ## Backtick umbrella option is disable-only
 
-`_backtick_enabled(options, key)` computes `master and granular`, where `master`
-is `options['backticks']` (default True) and `granular` is `options[key]`
-(default True). Therefore `backticks=False` forces every category off, but
-`backticks=True` does NOT re-enable a granular category set to False. Keep this
-one-directional semantics (documentation and changelog must say "disables",
-not "overrides"); a bidirectional override would require distinguishing an
-absent key from the default. All render sites (`_dox_alias`, the `dox_a_module`
+Keep the one-directional semantics of `_backtick_enabled`: `backticks=False`
+forces every category off, but `backticks=True` does NOT re-enable a granular
+category set to False (documentation and changelog must say "disables", not
+"overrides"; a bidirectional override would require distinguishing an absent
+key from the default). All render sites (`_dox_alias`, the `dox_a_module`
 header, `dox_a_value`, `dox_a_function`, `dox_a_class`) must route through
 `_backtick`.
 
@@ -103,17 +101,12 @@ stray sdist before the wheel step fails.
 
 ## Debug output uses logging; only the CLI configures handlers
 
-`autodox/functions.py` emits diagnostics through `getLogger(__name__)`. Keep
-`_debug(level, *args)` as a shim so call sites stay unchanged; it maps depth
-1/2/3 to `INFO`/`DEBUG`/`TRACE` (custom level 5), and `_logging_level_for`
-maps the CLI `--debug` count to a threshold. Library modules must not
-configure handlers or use `print` for diagnostics, nor touch logger level or
-`propagate`: `autodox/__init__.py` adds only a `NullHandler`, and
-`autodox/cli.py` attaches a temporary stderr `StreamHandler` per `invoke_cli`
-call, setting `propagate = False` while it is attached, then removes the
-handler and restores the previous level and `propagate` in a `finally` block.
-Without the propagation isolation, debug records reach the root logger, so a
-documented module that configures logging on import (e.g.
+Library modules must not configure handlers or use `print` for diagnostics,
+nor touch logger level or `propagate`; diagnostics go through
+`getLogger(__name__)` via the `_debug(level, *args)` shim so call sites stay
+unchanged. Only `autodox/cli.py` may attach a handler, and it must isolate
+propagation while doing so: without that isolation, debug records reach the
+root logger, so a documented module that configures logging on import (e.g.
 `logging.basicConfig()`) emits every debug line twice. This keeps redirected
 markdown on stdout clean and leaves programmatic users' logging
 configuration untouched. Regression coverage:

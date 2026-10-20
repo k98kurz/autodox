@@ -32,7 +32,8 @@ docstrings.
 ### `dox_a_value(value: Any, options: dict | None = None) -> str:`
 
 Collects some information about a value and returns it formatted as specified in
-the options or as a list.
+the options or as a list. Runtime type aliases and `NewType` values render as
+`name = definition` instead of their runtime class name.
 
 ### `set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, dict]]) -> None:`
 

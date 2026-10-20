@@ -36,7 +36,11 @@ a human.
 
 Major architectural decisions, best practices, and other things worth remembering
 long-term are stored in docs/memory.md. All entries must be actionable, not merely
-a historical record of churn.
+a historical record of churn. docs/memory.md holds ONLY rules and gotchas that
+reading the code, docstrings, tests, or other documentation will NOT reveal.
+
+Before creating a memory entry, grep docs/memory.md for an existing
+entry to edit instead.
 
 # Changelog
 
