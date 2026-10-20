@@ -2,7 +2,12 @@ from __future__ import annotations
 from autodox import functions
 from difflib import SequenceMatcher
 from types import ModuleType, FunctionType, MethodType
-from typing import Any, Hashable, Protocol, runtime_checkable
+from typing import (
+    Any, Callable, Hashable, List, Literal, NewType, Optional, Protocol,
+    runtime_checkable
+)
+import collections.abc
+import sys
 import unittest
 
 
@@ -772,6 +777,153 @@ class TestDoxAValue(unittest.TestCase):
 
         options['format'] = 'paragraph'
         assert functions.dox_a_value(1, options) == 'x: int\n\n'
+
+
+class TestTypeAliasValues(unittest.TestCase):
+    def test_dox_a_value_type_alias_uses_equals_form(self):
+        alias = Callable[[int], str]
+        observed = functions.dox_a_value(alias, {'name': 'Handler'})
+
+        assert observed == '- `Handler = Callable[[int], str]`\n', observed
+
+    def test_module_type_alias_renders_definition(self):
+        class MessageProtocol(Protocol):
+            ...
+        MessageProtocol.__module__ = 'mymod'
+        MessageProtocol.__qualname__ = 'MessageProtocol'
+        module = ModuleType('mymod')
+        module.Handler = Callable[[MessageProtocol], MessageProtocol | None]
+
+        observed = functions.dox_a_module(module)
+
+        assert (
+            '- `Handler = Callable[[MessageProtocol], '
+            'MessageProtocol | None]`'
+        ) in observed, observed
+
+    def test_builtin_generic_and_union_aliases_render_definitions(self):
+        module = ModuleType('mymod')
+        module.Vec = list[int]
+        module.Either = int | str
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `Vec = list[int]`' in observed, observed
+        assert '- `Either = int | str`' in observed, observed
+
+    def test_typing_generic_alias_renders_definition(self):
+        module = ModuleType('mymod')
+        module.Maybe = Optional[List[int]]
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `Maybe = Optional[List[int]]`' in observed, observed
+
+    def test_ordinary_values_keep_colon_form(self):
+        module = ModuleType('mymod')
+        module.some_const = 42
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `some_const`: `int`' in observed, observed
+
+    def test_type_alias_cleanup_can_be_disabled(self):
+        module = ModuleType('mymod')
+        module.Handler = Callable[[int], str]
+
+        observed = functions.dox_a_module(
+            module, {'clean_type_aliases': False}
+        )
+
+        assert '- `Handler = typing.Callable[[int], str]`' in observed, observed
+
+    def test_clean_type_alias_text_preserves_string_literals(self):
+        observed = functions._clean_type_alias_text(
+            "typing.Literal['see typing.Foo', typing.Any]"
+        )
+
+        assert observed == "Literal['see typing.Foo', Any]", observed
+
+    def test_type_alias_cleanup_preserves_string_literals(self):
+        module = ModuleType('mymod')
+        module.Lit = Literal['typing.Foo']
+
+        observed = functions.dox_a_module(module)
+
+        assert "- `Lit = Literal['typing.Foo']`" in observed, observed
+
+    def test_collections_abc_qualifier_is_stripped(self):
+        module = ModuleType('mymod')
+        module.Callback = collections.abc.Callable[[int], str]
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `Callback = Callable[[int], str]`' in observed, observed
+
+    def test_dotted_module_name_qualifier_is_stripped(self):
+        class Msg:
+            ...
+        Msg.__module__ = 'pkg.mod'
+        Msg.__qualname__ = 'Msg'
+        module = ModuleType('pkg.mod')
+        module.Vec = list[Msg]
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `Vec = list[Msg]`' in observed, observed
+
+    def test_newtype_renders_definition(self):
+        module = ModuleType('mymod')
+        module.UserId = NewType('UserId', int)
+
+        observed = functions.dox_a_module(module)
+
+        assert "- `UserId = NewType('UserId', int)`" in observed, observed
+
+    def test_newtype_supertype_qualifier_is_stripped(self):
+        class Msg:
+            ...
+        Msg.__module__ = 'mymod'
+        Msg.__qualname__ = 'Msg'
+        module = ModuleType('mymod')
+        module.UserId = NewType('UserId', list[Msg])
+
+        observed = functions.dox_a_module(module)
+
+        assert (
+            "- `UserId = NewType('UserId', list[Msg])`"
+        ) in observed, observed
+
+    def test_type_alias_backticks_can_be_disabled(self):
+        alias = Callable[[int], str]
+
+        observed = functions.dox_a_value(
+            alias, {'name': 'Handler', 'backtick_names': False}
+        )
+
+        assert observed == '- Handler = Callable[[int], str]\n', observed
+
+    @unittest.skipIf(sys.version_info < (3, 12), 'PEP 695 requires 3.12+')
+    def test_pep695_type_alias_renders_definition(self):
+        namespace = {}
+        exec('type Handler = dict[str, int]', namespace)
+        module = ModuleType('mymod')
+        module.Handler = namespace['Handler']
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `Handler = dict[str, int]`' in observed, observed
+
+    @unittest.skipIf(sys.version_info < (3, 12), 'PEP 695 requires 3.12+')
+    def test_pep695_unresolved_forward_ref_does_not_crash(self):
+        namespace = {}
+        exec('type Handler = Undefined', namespace)
+
+        observed = functions.dox_a_value(
+            namespace['Handler'], {'name': 'Handler'}
+        )
+
+        assert observed == '- `Handler = ...`\n', observed
 
 
 class TestDoxAProtocol(unittest.TestCase):

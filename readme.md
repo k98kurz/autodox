@@ -64,6 +64,8 @@ configured with the following options:
   signatures
 - `--no-backticks` to disable all backticks at once, forcing each granular flag
   off
+- `--no-clean-type-aliases` to keep module qualifiers in type alias
+  definitions (e.g. `typing.Callable[...]`)
 - `--debug` to increase the level of debug statements printed to stderr (starts
   at 0; levels 1-3 are available, and debug output does not contaminate redirected
   markdown)
@@ -121,6 +123,17 @@ method signatures (defaults to True)
 - `backticks: bool` - if False, disables all backticks regardless of the
 granular options (defaults to True); setting it True does not re-enable a
 category disabled by a granular option
+- `clean_type_aliases: bool` - if False, keeps module qualifiers in rendered
+type alias definitions (defaults to True)
+
+Module-level type aliases (for example `Handler = Callable[[Message], Message]`)
+are rendered in the Values section as `Handler = Callable[[Message], Message]`
+rather than by their private runtime class name. PEP 585 builtin generics, PEP
+604 unions, `typing` aliases, PEP 695 `type` aliases, and `typing.NewType` are
+supported. By default, `typing.`, `builtins.`, `collections.abc.`, and the
+documented module's own qualifier are stripped from the rendered definition;
+string literals inside a definition are left untouched. `NewType` values render
+as `Name = NewType('Name', Supertype)`.
 
 When the same class or function is bound to more than one name in a module
 (e.g. `UsageError = DependencyError`), `dox_a_module` documents the target once
@@ -145,6 +158,13 @@ Produces docs for a value. Valid options are the following:
   (defaults to True)
 - `backticks: bool` - if False, disables all backticks (defaults to True; see
   `dox_a_module` for how it interacts with the granular options)
+- `clean_type_aliases: bool` - if False, keeps module qualifiers in rendered
+  type alias definitions (defaults to True)
+- `module_name: str` - module qualifier to strip from type alias definitions
+  (usually set automatically by `dox_a_module`)
+
+Runtime type aliases and `NewType` values are rendered as `name = definition`;
+other values keep the `name: type` form.
 
 #### `dox_a_function(function: Callable, options: dict | None = None) -> str`
 

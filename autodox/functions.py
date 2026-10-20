@@ -2,8 +2,10 @@ from __future__ import annotations
 from enum import Enum, auto
 from inspect import Parameter, iscoroutinefunction, signature
 from logging import addLevelName, CRITICAL, DEBUG, getLogger, INFO
-from types import ModuleType, MethodType, FunctionType
-from typing import Any, Callable
+from types import FunctionType, GenericAlias, MethodType, ModuleType, UnionType
+from typing import Any, Callable, get_args, get_origin
+import re
+import typing
 
 
 class Event(Enum):
@@ -26,6 +28,7 @@ logger = getLogger(__name__)
 TRACE = 5
 addLevelName(TRACE, 'TRACE')
 _DEPTH_LEVELS = {1: INFO, 2: DEBUG, 3: TRACE}
+_TYPE_ALIAS_TYPE = getattr(typing, 'TypeAliasType', ())
 
 
 def _logging_level_for(debug: int) -> int:
@@ -230,6 +233,15 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
                 submodules.append(doc)
             continue
 
+        value_options = {
+            **suboptions, 'name': name, 'format': value_format,
+            'module_name': getattr(module, '__name__', ''),
+        }
+
+        if _is_type_alias(item):
+            values.append(dox_a_value(item, value_options))
+            continue
+
         if isinstance(item, type):
             target = _name_of(item, name)
             if target != name and module.__dict__.get(target) is item:
@@ -253,7 +265,7 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
             functions.append(doc)
             continue
 
-        doc = dox_a_value(item, {**suboptions, 'name': name, 'format': value_format})
+        doc = dox_a_value(item, value_options)
         values.append(doc)
 
     doc = _header(
@@ -291,7 +303,9 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
 
 def dox_a_value(value: Any, options: dict | None = None) -> str:
     """Collects some information about a value and returns it formatted
-        as specified in the options or as a list.
+        as specified in the options or as a list. Runtime type aliases
+        and `NewType` values render as `name = definition` instead of
+        their runtime class name.
     """
     _debug(1, 'dox_a_value(', value, options, ')')
     options = options or {}
@@ -304,17 +318,33 @@ def dox_a_value(value: Any, options: dict | None = None) -> str:
     name = value.__name__ if hasattr(value, '__name__') else '{unknown/unnamed}'
     if 'name' in options:
         name = options['name']
-    name = _backtick(name, backtick_names)
-    type_str = _backtick(type(value).__name__, backtick_types)
+
+    definition = _value_definition(value)
+    if definition is not None:
+        clean = (
+            options['clean_type_aliases']
+            if 'clean_type_aliases' in options else True
+        )
+        if clean:
+            module_name = (
+                options['module_name'] if 'module_name' in options else ''
+            )
+            definition = _clean_type_alias_text(definition, module_name)
+        entry = _backtick(f'{name} = {definition}', backtick_names)
+    else:
+        name = _backtick(name, backtick_names)
+        type_str = _backtick(type(value).__name__, backtick_types)
+        entry = f'{name}: {type_str}'
+
     doc = ''
 
     match format:
         case 'header':
-            doc = _header(f'{name}: {type_str}', header_level)
+            doc = _header(entry, header_level)
         case 'paragraph':
-            doc = _paragraph(f'{name}: {type_str}', options)
+            doc = _paragraph(entry, options)
         case _:
-            doc = _list(f'{name}: {type_str}')
+            doc = _list(entry)
 
     return _invoke_handler(Event.AFTER_VALUE, doc)
 
@@ -327,6 +357,96 @@ def _annotation_str(annotation: Any) -> str:
     if '[' in text:
         return text
     return annotation.__name__ if hasattr(annotation, '__name__') else text
+
+
+def _is_type_alias(value: Any) -> bool:
+    """Returns whether `value` is a runtime type alias construct, e.g.
+        `Callable[[int], str]`, `int | str`, or a PEP 695 `type` alias.
+    """
+    if _TYPE_ALIAS_TYPE and isinstance(value, _TYPE_ALIAS_TYPE):
+        return True
+    if isinstance(value, (GenericAlias, UnionType)):
+        return True
+    return get_origin(value) is not None and bool(get_args(value))
+
+
+def _type_alias_text(value: Any) -> str:
+    """Returns a readable definition for a runtime type alias. PEP 695
+        aliases are evaluated lazily, so failures fall back to `...`.
+    """
+    if _TYPE_ALIAS_TYPE and isinstance(value, _TYPE_ALIAS_TYPE):
+        try:
+            return _annotation_str(value.__value__)
+        except Exception:
+            return '...'
+    return str(value)
+
+
+def _is_new_type(value: Any) -> bool:
+    """Returns whether `value` is a `typing.NewType` instance. NewType
+        has been a class since 3.10, so its instances are never `type`s;
+        `__supertype__` is the stable way to detect them.
+    """
+    return callable(value) and hasattr(value, '__supertype__')
+
+
+def _value_definition(value: Any) -> str | None:
+    """Returns the right-hand side used to render a type alias or a
+        `NewType` as `Name = definition`, or `None` for ordinary values.
+    """
+    if _is_new_type(value):
+        supertype = _annotation_str(value.__supertype__)
+        return f"NewType('{value.__name__}', {supertype})"
+    if _is_type_alias(value):
+        return _type_alias_text(value)
+    return None
+
+
+def _strip_type_qualifiers(text: str, module_name: str = '') -> str:
+    """Strips stdlib and documented-module qualifiers from rendered type
+        text without touching longer dotted identifiers.
+    """
+    text = re.sub(
+        r'(?<![\w.])(?:typing|builtins|collections\.abc)\.', '', text
+    )
+    if module_name:
+        text = re.sub(
+            r'(?<![\w.])' + re.escape(module_name) + r'\.', '', text
+        )
+    return text
+
+
+def _clean_type_alias_text(text: str, module_name: str = '') -> str:
+    """Strips stdlib and documented-module qualifiers from rendered type
+        alias text. String literals, such as the arguments of
+        `Literal['typing.Foo']`, are copied verbatim, so their
+        contents are never rewritten.
+    """
+    out = []
+    start = 0
+    index = 0
+    quote = None
+    while index < len(text):
+        char = text[index]
+        if quote is None:
+            if char in ("'", '"'):
+                out.append(
+                    _strip_type_qualifiers(text[start:index], module_name)
+                )
+                quote = char
+                start = index
+            index += 1
+        else:
+            if char == '\\':
+                index += 2
+                continue
+            if char == quote:
+                out.append(text[start:index + 1])
+                quote = None
+                start = index + 1
+            index += 1
+    out.append(_strip_type_qualifiers(text[start:], module_name))
+    return ''.join(out)
 
 
 def _backtick(text: str, enabled: bool) -> str:

@@ -101,6 +101,7 @@ class TestCli(unittest.TestCase):
             '--no-backtick-types',
             '--no-backtick-signatures',
             '--no-backticks',
+            '--no-clean-type-aliases',
             '--debug', '--debug',
         ]
 
@@ -126,6 +127,7 @@ class TestCli(unittest.TestCase):
             'backtick_types': False,
             'backtick_signatures': False,
             'backticks': False,
+            'clean_type_aliases': False,
         }, captured['options']
         assert 'depth-one' in err, err
         assert 'depth-two' in err, err

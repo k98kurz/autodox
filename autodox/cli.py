@@ -97,6 +97,11 @@ def _build_parser(prog: str) -> ArgumentParser:
         help='do not wrap anything in backticks'
     )
     parser.add_argument(
+        '--no-clean-type-aliases', dest='clean_type_aliases',
+        action='store_false', default=None,
+        help='keep module qualifiers in type alias definitions'
+    )
+    parser.add_argument(
         '--debug', action='count', default=0,
         help=(
             'increases level of debug statements printed to stderr; starts at '
@@ -145,6 +150,8 @@ def _settings_from(options: Namespace) -> dict:
         settings['backtick_signatures'] = options.backtick_signatures
     if options.backticks is not None:
         settings['backticks'] = options.backticks
+    if options.clean_type_aliases is not None:
+        settings['clean_type_aliases'] = options.clean_type_aliases
     return settings
 
 

@@ -17,6 +17,19 @@
 - Added a `backticks` option and `--no-backticks` CLI flag that disable all
   backtick quoting at once, even for categories the granular options leave on
 - Added a `-v` / `--version` CLI flag that prints the package version and exits
+- Module-level type aliases now render their definitions in the Values section
+  as `Name = Type` instead of their private runtime class name (e.g.
+  `_CallableGenericAlias`); PEP 585 builtin generics, PEP 604 unions, `typing`
+  aliases, and PEP 695 `type` aliases are supported
+- `typing.NewType` values now render as `Name = NewType('Name', Supertype)`
+  instead of `Name: NewType`
+- Added a `clean_type_aliases` option and `--no-clean-type-aliases` CLI flag to
+  keep module qualifiers in rendered type alias definitions; cleanup is on by
+  default and never rewrites string literals such as `Literal['typing.Foo']`
+- `dox_a_value` accepts a `module_name` option specifying the module qualifier
+  to strip from type alias definitions (set automatically by `dox_a_module`)
+- Fixed PEP 585 aliases such as `list[int]` being documented as classes on
+  Python 3.10
 
 ## 0.1.17
 

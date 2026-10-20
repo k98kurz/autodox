@@ -118,3 +118,33 @@ documented module that configures logging on import (e.g.
 markdown on stdout clean and leaves programmatic users' logging
 configuration untouched. Regression coverage:
 `tests/test_cli.py::TestCli::test_debug_output_is_not_propagated_to_root`.
+
+## Detect type aliases before class routing
+
+On Python 3.10, `isinstance(list[int], type)` is True (`list[int].__class__` is
+`type`), so `dox_a_module` would otherwise route PEP 585 aliases into
+`dox_a_class` and document `list`. Detect runtime type aliases before the
+`isinstance(item, type)` branch using `types.GenericAlias`, `types.UnionType`,
+`typing.get_origin(...) is not None` with non-empty `get_args`, and a
+feature-detected `typing.TypeAliasType` (3.12+). Guard the latter with
+`getattr(typing, 'TypeAliasType', ())`; `isinstance(x, ())` is safely False on
+older versions.
+
+For PEP 695 aliases render `_annotation_str(value.__value__)`, not
+`str(value.__value__)`, which yields `<class 'X'>` for a bare-class alias.
+Guard `__value__` access with `try/except` because lazy evaluation can raise
+`NameError`; fall back to `...`. Strip `typing.`, `builtins.`,
+`collections.abc.`, and the documented module's qualifier with a regex whose
+left boundary is neither an identifier char nor a dot, so longer dotted names
+such as `mytyping.X` are not corrupted. Apply that regex only to spans outside
+single/double-quoted string literals, since alias definitions can contain them
+(e.g. `Literal['typing.Foo']`); a quote-blind pass corrupts the string
+contents. `clean_type_aliases=False` disables cleanup. Render aliases as
+`Name = Type` (one pair of backticks, governed by `backtick_names`), leaving
+ordinary values in the `Name: type` form.
+
+Detect `typing.NewType` values with `callable(value) and hasattr(value,
+'__supertype__')` rather than `isinstance(value, type)`: NewType has been a
+class since 3.10, so its instances are not types. Render them as
+`Name = NewType('Name', Supertype)` using `_annotation_str(value.__supertype__)`
+so the supertype is cleaned like any other alias definition.
