@@ -177,3 +177,38 @@ strategy breaks a different case:
   descriptor itself, so `isinstance` loses the `@classmethod`/`@staticmethod`
   marker; for `@lru_cache` outside `@staticmethod` the binding is the wrapper,
   not a `staticmethod` descriptor
+
+## Render defaults deterministically; never `str`/`repr` arbitrary values
+
+Parameter defaults are rendered by `_default_str`, which must not fall back to
+`f'{value}'` or `repr(value)`: function and object reprs embed memory addresses,
+so regenerated docs differ between runs. The final `repr` in
+`_simple_default_str` is safe because only deterministic builtin scalar types
+reach it. Inline only builtin scalars, enum members, type aliases, `NewType`
+values, classes, and exact containers with at most `_INLINE_CONTAINER_LIMIT`
+items and no nesting; elide `bytes`/`bytearray` values longer than
+`_INLINE_BYTES_LIMIT`, including inside containers; render everything else as
+`...` unless `verbose_defaults` is set.
+
+Verbose callables and callable instances render as
+`Callable[..., ReturnType]` (argument types are intentionally omitted; a missing
+return annotation becomes `Any`), non-callable object instances as
+`TypeName(...)`, and containers recursively. Check
+`_is_new_type`/`_is_type_alias` before `callable` so aliases are not rendered
+as callables. They must also be checked before `isinstance(value, type)` in
+`_simple_default_str`: on Python 3.10, `isinstance(list[int], type)` is True,
+so the class branch would render `list` instead of `list[int]`; keep the
+`not _is_type_alias` guard on that class branch as a defense against
+reordering. Likewise, `typing.Any` is a class on Python 3.11+ but a special
+form on 3.10; identity-check it and treat it as a simple scalar on both, and
+special-case it in `_simple_default_str` so 3.10 does not fall through to
+`repr` and render `typing.Any`. Sort set/frozenset renderings unconditionally,
+but sort dict items only when `sort_default_dicts` is set; preserving dict
+insertion order is intentional otherwise. Track container ids in a seen set
+(add before rendering children, discard after, in `finally`) so cycles become
+`...` while repeated non-cyclic references still render.
+
+Combined `Flag`/`IntFlag` values have `name is None` on Python 3.10, so
+decompose them into nonzero members and render fully qualified unions such as
+`Mode.READ | Mode.WRITE`. Regression coverage:
+`tests/test_doxing.py::TestDoxAFunction::test_verbose_defaults_are_deterministic`.

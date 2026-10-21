@@ -1,5 +1,5 @@
 from __future__ import annotations
-from enum import Enum, auto
+from enum import Enum, Flag, auto
 from inspect import Parameter, iscoroutinefunction, signature
 from logging import addLevelName, CRITICAL, DEBUG, getLogger, INFO
 from types import FunctionType, GenericAlias, MethodType, ModuleType, UnionType
@@ -544,9 +544,239 @@ def _backtick_enabled(options: dict, key: str) -> bool:
     return master and granular
 
 
-def _param_str(param: Parameter) -> str:
+_INLINE_CONTAINER_LIMIT = 3
+_INLINE_BYTES_LIMIT = 40
+_SIMPLE_SCALAR_TYPES = (
+    type(None), bool, int, float, complex, str, bytes, bytearray, range,
+    type(Ellipsis),
+)
+
+
+def _is_simple_scalar(value: Any) -> bool:
+    """Returns whether `value` can be rendered inline as a scalar
+        default: a builtin scalar, an enum member, `typing.Any`, a
+        type alias, a `NewType`, or a class.
+    """
+    return (
+        type(value) in _SIMPLE_SCALAR_TYPES
+        or isinstance(value, Enum)
+        or value is typing.Any
+        or _is_new_type(value)
+        or _is_type_alias(value)
+        or isinstance(value, type)
+    )
+
+
+def _is_inline_scalar(value: Any) -> bool:
+    """Returns whether `value` is a simple scalar that fits inline.
+        Applies `_INLINE_BYTES_LIMIT` to bytes-like values, including
+        when they are nested in a container.
+    """
+    if type(value) in (bytes, bytearray):
+        return len(value) <= _INLINE_BYTES_LIMIT
+    return _is_simple_scalar(value)
+
+
+def _is_simple_default(value: Any) -> bool:
+    """Returns whether `value` can be rendered inline without the
+        verbose option. Containers qualify only when they are very
+        small (at most `_INLINE_CONTAINER_LIMIT` items), not nested,
+        and contain only simple scalars. Bytes-like values qualify
+        only up to `_INLINE_BYTES_LIMIT` bytes, including when nested
+        in a container.
+    """
+    if _is_inline_scalar(value):
+        return True
+    if type(value) not in (tuple, list, set, frozenset, dict):
+        return False
+    if len(value) > _INLINE_CONTAINER_LIMIT:
+        return False
+    if type(value) is dict:
+        return all(
+            _is_inline_scalar(key) and _is_inline_scalar(item)
+            for key, item in value.items()
+        )
+    return all(_is_inline_scalar(item) for item in value)
+
+
+def _enum_default_str(value: Enum) -> str:
+    """Renders an enum member. Combined flags are rendered as a
+        union of fully qualified member names.
+    """
+    class_name = type(value).__name__
+    names = []
+    if isinstance(value, Flag):
+        if value.name:
+            names = value.name.split('|')
+        else:
+            names = [
+                member.name for member in type(value)
+                if  (   member.value != 0
+                        and member & value == member
+                    )
+            ]
+    elif value.name is not None:
+        names = [value.name]
+
+    if names:
+        return ' | '.join(
+            f'{class_name}.{name}' for name in names
+        )
+    return f'{class_name}({value.value!r})'
+
+
+def _simple_default_str(
+        value: Any, options: dict | None = None
+    ) -> str:
+    """Renders a simple default inline. Enum members use
+        `Enum.MEMBER`; type aliases and `NewType` values render as their
+        annotation text; containers preserve their literal syntax. Dict
+        keys are sorted only when `sort_default_dicts` is set.
+    """
+    options = options or {}
+    if value is Ellipsis:
+        return '...'
+    if value is typing.Any:
+        return 'Any'
+    if _is_new_type(value) or _is_type_alias(value):
+        return _annotation_str(value)
+    if isinstance(value, Enum):
+        return _enum_default_str(value)
+    if isinstance(value, type):
+        return value.__name__
+    if type(value) is dict:
+        items = [
+            (
+                _simple_default_str(key, options),
+                _simple_default_str(item, options),
+            )
+            for key, item in value.items()
+        ]
+        if options.get('sort_default_dicts', False):
+            items.sort()
+        rendered = ', '.join(f'{key}: {item}' for key, item in items)
+        return '{' + rendered + '}'
+    if type(value) is list:
+        return '[' + ', '.join(
+            _simple_default_str(item, options) for item in value
+        ) + ']'
+    if type(value) is tuple:
+        items = ', '.join(_simple_default_str(item, options) for item in value)
+        return f'({items},)' if len(value) == 1 else f'({items})'
+    if type(value) is set:
+        if not value:
+            return 'set()'
+        items = sorted(_simple_default_str(item, options) for item in value)
+        return '{' + ', '.join(items) + '}'
+    if type(value) is frozenset:
+        if not value:
+            return 'frozenset()'
+        items = sorted(_simple_default_str(item, options) for item in value)
+        return 'frozenset({' + ', '.join(items) + '})'
+    return repr(value)
+
+
+def _callable_default_str(value: Callable) -> str:
+    """Renders a callable default as `Callable[..., ReturnType]`.
+        Argument types are intentionally omitted, and a missing or
+        uninspectable return annotation becomes `Any`.
+    """
+    try:
+        _, return_annotation = _signature_parts(value)
+    except Exception:
+        return 'Callable[..., Any]'
+    if return_annotation is Parameter.empty:
+        return 'Callable[..., Any]'
+    return f'Callable[..., {_annotation_str(return_annotation)}]'
+
+
+def _verbose_default_str(
+        value: Any, options: dict | None = None,
+        seen: set[int] | None = None
+    ) -> str:
+    """Renders a complex default deterministically. Cycles are
+        rendered as `...`; non-callable object instances use a stable
+        `TypeName(...)` placeholder instead of their memory address,
+        and callable instances render as `Callable[..., ReturnType]`.
+        Dict keys are sorted only when `sort_default_dicts` is set.
+    """
+    options = options or {}
+    seen = seen if seen is not None else set()
+    if _is_simple_scalar(value):
+        return _simple_default_str(value, options)
+    if callable(value):
+        return _callable_default_str(value)
+
+    value_id = id(value)
+    if value_id in seen:
+        return '...'
+
+    if type(value) is dict:
+        seen.add(value_id)
+        try:
+            items = [
+                (
+                    _verbose_default_str(key, options, seen),
+                    _verbose_default_str(item, options, seen),
+                )
+                for key, item in value.items()
+            ]
+        finally:
+            seen.discard(value_id)
+        if options.get('sort_default_dicts', False):
+            items.sort()
+        rendered = ', '.join(f'{key}: {item}' for key, item in items)
+        return '{' + rendered + '}'
+
+    if type(value) in (list, tuple, set, frozenset):
+        seen.add(value_id)
+        try:
+            rendered = [
+                _verbose_default_str(item, options, seen)
+                for item in value
+            ]
+        finally:
+            seen.discard(value_id)
+        if type(value) is list:
+            return '[' + ', '.join(rendered) + ']'
+        if type(value) is tuple:
+            body = ', '.join(rendered)
+            return f'({body},)' if len(rendered) == 1 else f'({body})'
+        rendered.sort()
+        if type(value) is set:
+            if not rendered:
+                return 'set()'
+            return '{' + ', '.join(rendered) + '}'
+        if not rendered:
+            return 'frozenset()'
+        return 'frozenset({' + ', '.join(rendered) + '})'
+
+    return f'{type(value).__name__}(...)'
+
+
+def _default_str(
+        value: Any, options: dict | None = None,
+        seen: set[int] | None = None
+    ) -> str:
+    """Renders a parameter default. Simple values are shown inline;
+        complex values are abbreviated to `...` unless
+        `options['verbose_defaults']` is set.
+    """
+    options = options or {}
+    if _is_simple_default(value):
+        return _simple_default_str(value, options)
+    if options.get('verbose_defaults', False):
+        return _verbose_default_str(value, options, seen)
+    return '...'
+
+
+def _param_str(
+        param: Parameter, options: dict | None = None,
+        seen: set[int] | None = None
+    ) -> str:
     """Renders a parameter with its variadic marker, annotation, and
-        default when present.
+        default when present. Complex defaults are abbreviated unless
+        `options['verbose_defaults']` is set.
     """
     match param.kind:
         case Parameter.VAR_POSITIONAL:
@@ -560,12 +790,7 @@ def _param_str(param: Parameter) -> str:
         text += f': {_annotation_str(param.annotation)}'
 
     if param.default is not Parameter.empty:
-        if type(param.default) is str:
-            text += f" = '{param.default}'"
-        elif type(param.default) is type:
-            text += f' = {param.default.__name__}'
-        else:
-            text += f' = {param.default}'
+        text += f' = {_default_str(param.default, options, seen)}'
 
     return text
 
@@ -637,6 +862,7 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
     parts = []
     pos_only_rendered, slash_emitted = False, False
     star_emitted, varargs_rendered = False, False
+    seen = set()
 
     for position, param in enumerate(params):
         if  (   position == 0
@@ -662,7 +888,7 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
         if param.kind is Parameter.VAR_POSITIONAL:
             varargs_rendered = True
 
-        parts.append(_param_str(param))
+        parts.append(_param_str(param, options, seen))
 
         if param.kind is Parameter.POSITIONAL_ONLY:
             pos_only_rendered = True
@@ -838,7 +1064,7 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
                     getattr(cls, name),
                     {**suboptions, 'format': format, 'prepend': '@classmethod '}
                 )
-            elif _is_staticmethod(cls.__dict__[name]):
+            elif _is_staticmethod(value):
                 doc += dox_a_function(
                     value,
                     {**suboptions, 'format': format, 'prepend': '@staticmethod '}

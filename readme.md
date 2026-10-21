@@ -66,6 +66,10 @@ configured with the following options:
   off
 - `--no-clean-type-aliases` to keep module qualifiers in type alias
   definitions (e.g. `typing.Callable[...]`)
+- `--verbose-defaults` to render complex default values in full instead of
+  abbreviating them to `...`
+- `--sort-default-dicts` to sort dictionary defaults by rendered key instead of
+  preserving insertion order
 - `--debug` to increase the level of debug statements printed to stderr (starts
   at 0; levels 1-3 are available, and debug output does not contaminate redirected
   markdown)
@@ -124,7 +128,11 @@ method signatures (defaults to True)
 granular options (defaults to True); setting it True does not re-enable a
 category disabled by a granular option
 - `clean_type_aliases: bool` - if False, keeps module qualifiers in rendered
-type alias definitions (defaults to True)
+  type alias definitions (defaults to True)
+- `verbose_defaults: bool` - if True, renders complex default values in full
+  instead of abbreviating them to `...` (defaults to False)
+- `sort_default_dicts: bool` - if True, sorts dictionary defaults by rendered
+  key instead of preserving insertion order (defaults to False)
 
 Module-level type aliases (for example `Handler = Callable[[Message], Message]`)
 are rendered in the Values section as `Handler = Callable[[Message], Message]`
@@ -178,6 +186,29 @@ Produces docs for a function. Valid options are the following:
   (defaults to True)
 - `backticks: bool` - if False, disables all backticks (defaults to True; see
   `dox_a_module` for how it interacts with the granular options)
+- `verbose_defaults: bool` - if True, renders complex default values in full
+  instead of abbreviating them to `...` (defaults to False)
+- `sort_default_dicts: bool` - if True, sorts dictionary defaults by rendered
+  key instead of preserving insertion order (defaults to False)
+
+By default, callable defaults, object instances, nested containers, and
+containers with more than three items are rendered as `...`. Scalar and small
+container defaults keep their literal form; type aliases render as their
+definitions (PEP 695 `type` aliases as their names) and `NewType` values as
+their names. `typing.Any` renders as `Any`
+on all supported Python versions. Bytes-like defaults are also elided when
+they exceed 40 bytes, including when nested inside a small container. With
+`verbose_defaults`, callables and callable instances render as
+`Callable[..., ReturnType]`, non-callable object instances use a stable
+`TypeName(...)` placeholder, and containers are expanded recursively.
+Combined `Flag` defaults render as fully qualified member unions, such as
+`Mode.READ | Mode.WRITE`.
+
+Dictionary defaults preserve insertion order by default. With
+`sort_default_dicts`, dictionary items are sorted recursively by their rendered
+key and value. Verbose output never includes memory addresses; enable
+`sort_default_dicts` as well when dictionary insertion order may vary between
+runs.
 
 #### `dox_a_class(cls: type, options: dict | None = None) -> str`
 
@@ -197,6 +228,10 @@ Produces docs for a class. Valid options are the following:
   signatures (defaults to True)
 - `backticks: bool` - if False, disables all backticks (defaults to True; see
   `dox_a_module` for how it interacts with the granular options)
+- `verbose_defaults: bool` - if True, renders complex method default values in
+  full instead of abbreviating them to `...` (defaults to False)
+- `sort_default_dicts: bool` - if True, sorts method dictionary defaults by
+  rendered key instead of preserving insertion order (defaults to False)
 
 #### Hooks
 

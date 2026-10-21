@@ -1,6 +1,7 @@
 from __future__ import annotations
 from autodox import functions
 from difflib import SequenceMatcher
+from enum import Enum, Flag, auto
 from functools import lru_cache, partial, wraps
 from types import ModuleType, FunctionType, MethodType
 from typing import (
@@ -362,6 +363,524 @@ class TestDoxAFunction(unittest.TestCase):
             f"expected {{\n{expected}}} but got {{\n{doc}}}"
         )
 
+    def test_complex_default_is_elided_by_default(self):
+        class Status(Enum):
+            READY = auto()
+
+        def handler(x: int) -> int:
+            return x
+
+        def fn(options: dict = {Status.READY: handler}) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(options: dict = ...) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_callable_default_is_elided_by_default(self):
+        def handler(x: int) -> int:
+            return x
+
+        def fn(callback=handler) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(callback = ...) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_object_default_is_elided_by_default(self):
+        class Example:
+            ...
+
+        def fn(value=Example()) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(value = ...) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_large_container_default_is_elided_by_default(self):
+        def fn(items: list = [1, 2, 3, 4]) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(items: list = ...) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_nested_container_default_is_elided_by_default(self):
+        def fn(items: list = [[1], [2]]) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(items: list = ...) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_simple_container_defaults_are_preserved(self):
+        def empty_dict(value: dict = {}) -> None:
+            ...
+
+        def small_list(value: list = [1, 2, 3]) -> None:
+            ...
+
+        def small_tuple(value: tuple = (1,)) -> None:
+            ...
+
+        def small_set(value: set = {1, 2}) -> None:
+            ...
+
+        expected = {
+            'empty_dict': '- `empty_dict(value: dict = {}) -> None:`\n',
+            'small_list': '- `small_list(value: list = [1, 2, 3]) -> None:`\n',
+            'small_tuple': '- `small_tuple(value: tuple = (1,)) -> None:`\n',
+            'small_set': '- `small_set(value: set = {1, 2}) -> None:`\n',
+        }
+        for name, function in (
+                ('empty_dict', empty_dict), ('small_list', small_list),
+                ('small_tuple', small_tuple), ('small_set', small_set),
+            ):
+            with self.subTest(name=name):
+                doc = functions.dox_a_function(function)
+                assert doc == expected[name], (
+                    f"expected {{\n{expected[name]}}} but got {{\n{doc}}}"
+                )
+
+    def test_verbose_defaults_render_callable_type(self):
+        def handler(x: int) -> int:
+            return x
+
+        def fn(callback=handler) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'verbose_defaults': True})
+        expected = '- `fn(callback = Callable[..., int]) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+        assert '0x' not in doc
+
+    def test_verbose_defaults_render_unannotated_callable_type(self):
+        def handler(x):
+            return x
+
+        def fn(callback=handler) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'verbose_defaults': True})
+        expected = '- `fn(callback = Callable[..., Any]) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_verbose_defaults_render_variadic_callable_type(self):
+        def handler(*args, **kwargs) -> str:
+            ...
+
+        def fn(callback=handler) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'verbose_defaults': True})
+        expected = '- `fn(callback = Callable[..., str]) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_class_defaults_render_as_names(self):
+        class Example:
+            ...
+
+        def fn(cls=Example) -> None:
+            ...
+
+        expected = '- `fn(cls = Example) -> None:`\n'
+        for options in ({}, {'verbose_defaults': True}):
+            doc = functions.dox_a_function(fn, options)
+            assert doc == expected, (
+                f"expected {{\n{expected}}} but got {{\n{doc}}}"
+            )
+
+    def test_verbose_defaults_render_object_placeholder(self):
+        class Example:
+            ...
+
+        def fn(value=Example()) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'verbose_defaults': True})
+        expected = '- `fn(value = Example(...)) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_verbose_defaults_expand_large_and_nested_containers(self):
+        def fn(items: list = [1, 2, 3, [4, 5]]) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'verbose_defaults': True})
+        expected = '- `fn(items: list = [1, 2, 3, [4, 5]]) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_verbose_defaults_render_dict_of_callables(self):
+        class Status(Enum):
+            READY = auto()
+
+        def handler(x: int) -> int:
+            return x
+
+        def fn(options: dict = {Status.READY: handler}) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'verbose_defaults': True})
+        expected = (
+            '- `fn(options: dict = {Status.READY: '
+            'Callable[..., int]}) -> None:`\n'
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+        assert '0x' not in doc
+
+    def test_verbose_defaults_sort_set_items(self):
+        def fn(value: set = {'b', 'a', 'c'}) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'verbose_defaults': True})
+        expected = "- `fn(value: set = {'a', 'b', 'c'}) -> None:`\n"
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_verbose_defaults_are_deterministic(self):
+        def build():
+            class Status(Enum):
+                READY = auto()
+
+            def handler(x: int) -> int:
+                return x
+
+            def fn(callback=handler, options={Status.READY: handler}) -> None:
+                ...
+
+            return fn
+
+        first = functions.dox_a_function(
+            build(), {'verbose_defaults': True}
+        )
+        second = functions.dox_a_function(
+            build(), {'verbose_defaults': True}
+        )
+
+        assert first == second, (
+            f"expected deterministic output but got {{\n{first}}} and "
+            f"{{\n{second}}}"
+        )
+        assert '0x' not in first
+
+    def test_verbose_defaults_handle_cycles(self):
+        value = {}
+        value['self'] = value
+
+        def fn(options=value) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'verbose_defaults': True})
+        expected = "- `fn(options = {'self': ...}) -> None:`\n"
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+        assert '0x' not in doc
+
+    def test_sort_default_dicts_is_opt_in(self):
+        def fn(value: dict = {'b': 2, 'a': 1}) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = "- `fn(value: dict = {'b': 2, 'a': 1}) -> None:`\n"
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+        sorted_doc = functions.dox_a_function(
+            fn, {'sort_default_dicts': True}
+        )
+        expected_sorted = "- `fn(value: dict = {'a': 1, 'b': 2}) -> None:`\n"
+        assert sorted_doc == expected_sorted, (
+            f"expected {{\n{expected_sorted}}} but got {{\n{sorted_doc}}}"
+        )
+
+    def test_sort_default_dicts_recurses_in_verbose_mode(self):
+        def fn(value: dict = {'b': {'z': 2, 'a': 1}, 'a': 3}) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {
+            'verbose_defaults': True, 'sort_default_dicts': True,
+        })
+        expected = (
+            "- `fn(value: dict = {'a': 3, 'b': {'a': 1, 'z': 2}})"
+            " -> None:`\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_sort_default_dicts_handles_mixed_key_types(self):
+        def fn(value: dict = {2: 'b', 'a': 1}) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'sort_default_dicts': True})
+        expected = "- `fn(value: dict = {'a': 1, 2: 'b'}) -> None:`\n"
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_sort_default_dicts_stabilizes_set_built_dict(self):
+        value = {key: 1 for key in {'gamma', 'alpha', 'beta'}}
+
+        def fn(options=value) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn, {'sort_default_dicts': True})
+        expected = (
+            "- `fn(options = {'alpha': 1, 'beta': 1, 'gamma': 1})"
+            " -> None:`\n"
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_combined_flag_default_renders_qualified_members(self):
+        class Mode(Flag):
+            READ = auto()
+            WRITE = auto()
+
+        def fn(mode=Mode.READ | Mode.WRITE) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(mode = Mode.READ | Mode.WRITE) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_single_flag_default_stays_member_name(self):
+        class Mode(Flag):
+            READ = auto()
+
+        def fn(mode=Mode.READ) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(mode = Mode.READ) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_unnamed_flag_default_falls_back_to_value(self):
+        class Mode(Flag):
+            READ = auto()
+
+        def fn(mode=Mode(0)) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(mode = Mode(0)) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_type_alias_defaults_render_inline(self):
+        Alias = list[int]
+        Number = NewType('Number', int)
+
+        def fn(
+                alias=Alias, union=int | str, number=Number
+            ) -> None:
+            ...
+
+        expected = (
+            '- `fn(alias = list[int], union = int | str, '
+            'number = Number) -> None:`\n'
+        )
+        for options in ({}, {'verbose_defaults': True}):
+            doc = functions.dox_a_function(fn, options)
+            assert doc == expected, (
+                f"expected {{\n{expected}}} but got {{\n{doc}}}"
+            )
+            assert '0x' not in doc
+
+    def test_type_alias_inside_container_renders_inline(self):
+        Alias = list[int]
+
+        def fn(items=[Alias]) -> None:
+            ...
+
+        expected = '- `fn(items = [list[int]]) -> None:`\n'
+        for options in ({}, {'verbose_defaults': True}):
+            doc = functions.dox_a_function(fn, options)
+            assert doc == expected, (
+                f"expected {{\n{expected}}} but got {{\n{doc}}}"
+            )
+
+    def test_type_alias_annotation_renders_runtime_type(self):
+        Handler = Callable[[list[int]], None]
+
+        def fn(handler: Handler = lambda l: None) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = (
+            '- `fn(handler: Handler = ...) -> None:`\n'
+        )
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
+
+    def test_typing_any_renders_inline(self):
+        def fn(value=Any) -> None:
+            ...
+
+        def nested(items=[Any]) -> None:
+            ...
+
+        expected = {
+            'fn': '- `fn(value = Any) -> None:`\n',
+            'nested': '- `nested(items = [Any]) -> None:`\n',
+        }
+        for name, function in (('fn', fn), ('nested', nested)):
+            with self.subTest(name=name):
+                for options in ({}, {'verbose_defaults': True}):
+                    doc = functions.dox_a_function(function, options)
+                    assert doc == expected[name], (
+                        f"expected {{\n{expected[name]}}} but got {{\n{doc}}}"
+                    )
+
+    def test_small_bytes_like_defaults_stay_inline(self):
+        def bytes_fn(value: bytes = b'abc') -> None:
+            ...
+
+        def bytearray_fn(value: bytearray = bytearray(b'abc')) -> None:
+            ...
+
+        expected = {
+            'bytes_fn': "- `bytes_fn(value: bytes = b'abc') -> None:`\n",
+            'bytearray_fn': (
+                "- `bytearray_fn(value: bytearray = bytearray(b'abc'))"
+                " -> None:`\n"
+            ),
+        }
+        for name, function in (
+                ('bytes_fn', bytes_fn), ('bytearray_fn', bytearray_fn)
+            ):
+            with self.subTest(name=name):
+                doc = functions.dox_a_function(function)
+                assert doc == expected[name], (
+                    f"expected {{\n{expected[name]}}} but got {{\n{doc}}}"
+                )
+
+    def test_large_bytes_like_defaults_are_elided_by_default(self):
+        big_bytes = b'a' * 100
+        big_bytearray = bytearray(b'a' * 100)
+
+        def bytes_fn(value: bytes = big_bytes) -> None:
+            ...
+
+        def bytearray_fn(value: bytearray = big_bytearray) -> None:
+            ...
+
+        for name, function, value in (
+                ('bytes_fn', bytes_fn, big_bytes),
+                ('bytearray_fn', bytearray_fn, big_bytearray),
+            ):
+            with self.subTest(name=name):
+                doc = functions.dox_a_function(function)
+                expected = f'- `{name}(value: {type(value).__name__} = ...)'
+                expected += ' -> None:`\n'
+                assert doc == expected, (
+                    f"expected {{\n{expected}}} but got {{\n{doc}}}"
+                )
+
+                verbose = functions.dox_a_function(
+                    function, {'verbose_defaults': True}
+                )
+                assert repr(value) in verbose, verbose
+
+    def test_nested_small_bytes_like_defaults_stay_inline(self):
+        def list_fn(value=[b'abc']) -> None:
+            ...
+
+        def dict_fn(value={'key': b'abc'}) -> None:
+            ...
+
+        expected = {
+            'list_fn': "- `list_fn(value = [b'abc']) -> None:`\n",
+            'dict_fn': "- `dict_fn(value = {'key': b'abc'}) -> None:`\n",
+        }
+        for name, function in (
+                ('list_fn', list_fn), ('dict_fn', dict_fn)
+            ):
+            with self.subTest(name=name):
+                doc = functions.dox_a_function(function)
+                assert doc == expected[name], (
+                    f"expected {{\n{expected[name]}}} but got {{\n{doc}}}"
+                )
+
+    def test_nested_large_bytes_like_defaults_are_elided_by_default(self):
+        big_bytes = b'a' * 100
+        big_bytearray = bytearray(b'a' * 100)
+
+        def list_fn(value=[big_bytes]) -> None:
+            ...
+
+        def dict_fn(value={'key': big_bytearray}) -> None:
+            ...
+
+        for name, function, value in (
+                ('list_fn', list_fn, big_bytes),
+                ('dict_fn', dict_fn, big_bytearray),
+            ):
+            with self.subTest(name=name):
+                doc = functions.dox_a_function(function)
+                expected = f'- `{name}(value = ...) -> None:`\n'
+                assert doc == expected, (
+                    f"expected {{\n{expected}}} but got {{\n{doc}}}"
+                )
+
+                verbose = functions.dox_a_function(
+                    function, {'verbose_defaults': True}
+                )
+                assert repr(value) in verbose, verbose
+
     def test_annotations_with_annotated_self(self):
         class WithAnnotatedSelf:
             """An example class."""
@@ -395,6 +914,28 @@ class TestDoxAFunction(unittest.TestCase):
 
 
 class TestDoxAClass(unittest.TestCase):
+    def test_init_defaults_follow_verbose_policy(self):
+        class Status(Enum):
+            READY = auto()
+
+        def handler(x: int) -> int:
+            return x
+
+        class Example:
+            def __init__(self, options: dict = {Status.READY: handler}) -> None:
+                ...
+
+        doc = functions.dox_a_class(Example)
+        assert '`__init__(options: dict = ...) -> None:`' in doc, doc
+        assert '0x' not in doc, doc
+
+        verbose = functions.dox_a_class(Example, {'verbose_defaults': True})
+        assert (
+            '`__init__(options: dict = {Status.READY: '
+            'Callable[..., int]}) -> None:`'
+        ) in verbose, verbose
+        assert '0x' not in verbose, verbose
+
     def test_dox_a_class(self):
         doc = functions.dox_a_class(ExampleClass)
         expected = """# `ExampleClass`

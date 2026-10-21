@@ -35,6 +35,26 @@
 - Added a `clean_type_aliases` option and `--no-clean-type-aliases` CLI flag to
   keep module qualifiers in rendered type alias definitions; cleanup is on by
   default and never rewrites string literals such as `Literal['typing.Foo']`
+- Complex parameter defaults (callables, object instances, nested containers,
+  and containers with more than three items) now render as `...` instead of
+  unstable `repr` output that included function pointers and memory addresses;
+  scalar and small container defaults keep their literal form
+- Added a `verbose_defaults` option and `--verbose-defaults` CLI flag to render
+  complex defaults in full: callables and callable instances as
+  `Callable[..., ReturnType]`, non-callable object instances as a stable
+  `TypeName(...)` placeholder, and containers recursively; verbose output
+  contains no memory addresses
+- Added a `sort_default_dicts` option and `--sort-default-dicts` CLI flag to
+  sort dictionary defaults by rendered key; insertion order is preserved by
+  default, and sorting can be enabled when dict construction order may vary
+  between runs
+- Large `bytes` and `bytearray` defaults (over 40 bytes) are now elided like
+  other large containers, including when nested inside a small container
+- `typing.Any` parameter defaults now render as `Any` consistently on Python
+  3.10 and 3.11+
+- Enum member defaults now render as `Enum.MEMBER`, including `IntEnum` members
+  on Python 3.11+; combined `Flag`/`IntFlag` defaults render as fully qualified
+  member unions such as `Mode.READ | Mode.WRITE`, including on Python 3.10
 - `dox_a_value` accepts a `module_name` option specifying the module qualifier
   to strip from type alias definitions (set automatically by `dox_a_module`)
 - Fixed PEP 585 aliases such as `list[int]` being documented as classes on

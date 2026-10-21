@@ -102,6 +102,20 @@ def _build_parser(prog: str) -> ArgumentParser:
         help='keep module qualifiers in type alias definitions'
     )
     parser.add_argument(
+        '--verbose-defaults', action='store_true',
+        help=(
+            'render complex default values in full instead of abbreviating '
+            'them to `...`'
+        )
+    )
+    parser.add_argument(
+        '--sort-default-dicts', action='store_true',
+        help=(
+            'sort dictionary defaults by rendered key instead of preserving '
+            'insertion order'
+        )
+    )
+    parser.add_argument(
         '--debug', action='count', default=0,
         help=(
             'increases level of debug statements printed to stderr; starts at '
@@ -152,6 +166,10 @@ def _settings_from(options: Namespace) -> dict:
         settings['backticks'] = options.backticks
     if options.clean_type_aliases is not None:
         settings['clean_type_aliases'] = options.clean_type_aliases
+    if options.verbose_defaults:
+        settings['verbose_defaults'] = True
+    if options.sort_default_dicts:
+        settings['sort_default_dicts'] = True
     return settings
 
 
