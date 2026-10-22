@@ -9,6 +9,20 @@ and docstrings.
 
 Valid events for the hook system.
 
+#### Members
+
+- `AFTER_HEADER = 1`
+- `AFTER_PARAGRAPH = 2`
+- `AFTER_LIST = 3`
+- `BEFORE_VALUE = 4`
+- `AFTER_VALUE = 5`
+- `BEFORE_FUNCTION = 6`
+- `AFTER_FUNCTION = 7`
+- `BEFORE_CLASS = 8`
+- `AFTER_CLASS = 9`
+- `BEFORE_MODULE = 10`
+- `AFTER_MODULE = 11`
+
 ## Functions
 
 ### `dox_a_class(cls: type, options: dict | None = None) -> str:`

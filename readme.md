@@ -53,8 +53,8 @@ configured with the following options:
 - `--method-format=format` - can be one of 'header', 'paragraph', or 'list'
 - `--value-format=format` - can be one of 'header', 'paragraph', or 'list'
 - `--line-length=number` - number of chars per line in paragraphs
-- `--include-private` to include things prefaced with '_'
-- `--include-dunder` to include things prefaced with '__'
+- `--include-private` to include things prefaced with `_`
+- `--include-dunder` to include things prefaced with `__`
 - `--include-submodules` to include submodules
 - `--document-submodules` to run the module documentation for submodules
 - `--no-backtick-names` to omit backticks around names (annotations, values,
@@ -110,8 +110,8 @@ Produces docs for a module. Valid options are the following:
 - `function_format: str` - can be one of 'header', 'paragraph', or 'list'
 - `method_format: str` - can be one of 'header', 'paragraph', or 'list'
 - `value_format: str` - can be one of 'header', 'paragraph', or 'list'
-- `include_private: bool` - if True, includes things with names prefaced by '_'
-- `include_dunder: bool` - if True, includes things with names prefaced by '__'
+- `include_private: bool` - if True, includes things with names prefaced by `_`
+- `include_dunder: bool` - if True, includes things with names prefaced by `__`
 - `include_submodules: bool` - if True, notes will be made about any additional
 modules encountered when analyzing the specified module
 - `document_submodules: bool` - if True, `dox_a_module` will be called
@@ -228,10 +228,18 @@ Produces docs for a class. Valid options are the following:
   signatures (defaults to True)
 - `backticks: bool` - if False, disables all backticks (defaults to True; see
   `dox_a_module` for how it interacts with the granular options)
-- `verbose_defaults: bool` - if True, renders complex method default values in
-  full instead of abbreviating them to `...` (defaults to False)
+- `verbose_defaults: bool` - if True, renders complex default values in full
+  instead of abbreviating them to `...` (defaults to False)
 - `sort_default_dicts: bool` - if True, sorts method dictionary defaults by
   rendered key instead of preserving insertion order (defaults to False)
+
+Enum subclasses also get a `Members` section immediately after the docstring.
+Members are listed in declaration order as `NAME = value`; aliases render as
+`ALIAS = TARGET`, and `Flag`/`IntFlag` composites render as
+`NAME = A | B = value` when all bits map to visible single-bit members.
+`exclude_names`, `include_private`, and `include_dunder` apply to member names.
+Complex values follow the same rendering rules as parameter defaults, so they
+are abbreviated to `...` unless `verbose_defaults` is enabled.
 
 #### Hooks
 

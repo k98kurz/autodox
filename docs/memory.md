@@ -212,3 +212,13 @@ Combined `Flag`/`IntFlag` values have `name is None` on Python 3.10, so
 decompose them into nonzero members and render fully qualified unions such as
 `Mode.READ | Mode.WRITE`. Regression coverage:
 `tests/test_doxing.py::TestDoxAFunction::test_verbose_defaults_are_deterministic`.
+
+## Enumerate enum members from `__members__`, not iteration
+
+`for member in EnumSubclass` omits aliases and composite `Flag`/`IntFlag`
+members such as `READ_WRITE = READ | WRITE`, so `_dox_enum_members` must
+iterate `cls.__members__.items()`. Render `member.value` through
+`_default_str`; never use `str(member)` or `repr(member)`, because `IntEnum`
+string behavior differs across Python versions. Use `member.name` to detect
+aliases and build Flag unions, and fall back to the numeric value when a
+constituent is filtered out by `exclude_names` or visibility options.

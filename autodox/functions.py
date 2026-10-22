@@ -1083,6 +1083,91 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
     return doc
 
 
+def _flag_union(
+        member: Enum, single_bit_members: list[tuple[str, int]]
+    ) -> str | None:
+    """Returns the union of visible single-bit members covering a
+        `Flag` member, or `None` when the value cannot be represented
+        that way. `single_bit_members` must contain canonical names and
+        values in declaration order.
+    """
+    if not isinstance(member, Flag):
+        return None
+    value = member.value
+    if not isinstance(value, int) or value <= 0:
+        return None
+    if value & (value - 1) == 0:
+        return None
+
+    constituents = []
+    covered = 0
+    for name, candidate_value in single_bit_members:
+        if (value & candidate_value) != candidate_value:
+            continue
+        constituents.append(name)
+        covered |= candidate_value
+
+    if len(constituents) > 1 and covered == value:
+        return ' | '.join(constituents)
+    return None
+
+
+def _dox_enum_members(cls: type, options: dict | None = None) -> str:
+    """Formats the members of an `Enum` subclass as a list, including
+        aliases and `Flag` combinations.
+    """
+    _debug(1, '_dox_enum_members(', cls, options, ')')
+    options = options or {}
+    exclude_names = options['exclude_names'] if 'exclude_names' in options else []
+    include_private = 'include_private' in options
+    include_dunder = 'include_dunder' in options
+    backtick_names = _backtick_enabled(options, 'backtick_names')
+    classname = cls.__name__ if hasattr(cls, '__name__') else ''
+
+    members = {}
+    for name, member in cls.__members__.items():
+        display = _unmangle_name(name, classname)
+        if  (   name in exclude_names
+                or display in exclude_names
+            ):
+            continue
+        if not _is_visible(name, include_private, include_dunder):
+            continue
+        members[name] = member
+
+    visible_names = {
+        name for name, member in members.items() if name == member.name
+    }
+    single_bit_members = []
+    if issubclass(cls, Flag):
+        for name, member in members.items():
+            if name not in visible_names:
+                continue
+            member_value = member.value
+            if  (   isinstance(member_value, int)
+                    and member_value > 0
+                    and member_value & (member_value - 1) == 0
+                ):
+                single_bit_members.append((name, member_value))
+
+    doc = ''
+    for name, member in members.items():
+        value = _default_str(member.value, options)
+        if name != member.name:
+            target = (
+                member.name if member.name in visible_names else value
+            )
+            entry = f'{name} = {target}'
+        else:
+            union = _flag_union(member, single_bit_members)
+            entry = (
+                f'{name} = {union} = {value}'
+                if union is not None else f'{name} = {value}'
+            )
+        doc += _list(_backtick(entry, backtick_names), options)
+    return doc
+
+
 def _get_all_annotations(cls: type) -> dict:
     """Collects all annotations from a class hierarchy."""
     _debug(1, '_get_all_annotations(', cls, ')')
@@ -1169,6 +1254,12 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
     docstring = cls.__doc__ if hasattr(cls, '__doc__') else None
     if docstring:
         doc += _paragraph(docstring, options)
+
+    if isinstance(cls, type) and issubclass(cls, Enum):
+        members = _dox_enum_members(cls, options)
+        if members:
+            doc += _header('Members', header_level + 1)
+            doc += members + '\n'
 
     if annotations:
         doc += _header('Annotations', header_level + 1)

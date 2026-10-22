@@ -17,6 +17,9 @@
 - Added a `backticks` option and `--no-backticks` CLI flag that disable all
   backtick quoting at once, even for categories the granular options leave on
 - Added a `-v` / `--version` CLI flag that prints the package version and exits
+- Enum subclasses now document their members in a `Members` section, including
+  aliases (`CRIMSON = RED`) and `Flag`/`IntFlag` composites
+  (`READ_WRITE = READ | WRITE = 3`)
 - Module-level type aliases now render their definitions in the Values section
   as `Name = Type` instead of their private runtime class name (e.g.
   `_CallableGenericAlias`); PEP 585 builtin generics, PEP 604 unions, `typing`

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from autodox import functions
 from difflib import SequenceMatcher
-from enum import Enum, Flag, auto
+from enum import Enum, Flag, IntFlag, auto
 from functools import lru_cache, partial, wraps
 from types import ModuleType, FunctionType, MethodType
 from typing import (
@@ -1135,6 +1135,236 @@ Example async class method.
             f"expected {{\n{expected}}} but got {{\n{doc}}} "
             f"diff {{{diff(expected, doc)}}}"
         )
+
+
+class TestDoxAnEnum(unittest.TestCase):
+    def test_enum_members_are_documented_in_order(self):
+        class Status(Enum):
+            """Valid statuses."""
+            READY = auto()
+            RUNNING = auto()
+            DONE = 'done'
+            POINT = (1, 2)
+
+        doc = functions.dox_a_class(Status)
+        expected = """# `Status(Enum)`
+
+Valid statuses.
+
+## Members
+
+- `READY = 1`
+- `RUNNING = 2`
+- `DONE = 'done'`
+- `POINT = (1, 2)`
+
+"""
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}} "
+            f"diff {{{diff(expected, doc)}}}"
+        )
+
+    def test_enum_aliases_render_target_name(self):
+        class Color(Enum):
+            """Colors."""
+            RED = 1
+            CRIMSON = 1
+            BLUE = 2
+
+        doc = functions.dox_a_class(Color)
+        expected = """# `Color(Enum)`
+
+Colors.
+
+## Members
+
+- `RED = 1`
+- `CRIMSON = RED`
+- `BLUE = 2`
+
+"""
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}} "
+            f"diff {{{diff(expected, doc)}}}"
+        )
+
+    def test_flag_members_render_symbolic_and_numeric_values(self):
+        class Permission(Flag):
+            """Permissions."""
+            NONE = 0
+            READ = auto()
+            WRITE = auto()
+            EXECUTE = auto()
+            READ_WRITE = READ | WRITE
+            ALL = READ | WRITE | EXECUTE
+            RW = READ | WRITE
+
+        doc = functions.dox_a_class(Permission)
+        expected = """# `Permission(Flag)`
+
+Permissions.
+
+## Members
+
+- `NONE = 0`
+- `READ = 1`
+- `WRITE = 2`
+- `EXECUTE = 4`
+- `READ_WRITE = READ | WRITE = 3`
+- `ALL = READ | WRITE | EXECUTE = 7`
+- `RW = READ_WRITE`
+
+"""
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}} "
+            f"diff {{{diff(expected, doc)}}}"
+        )
+
+    def test_intflag_members_render_symbolic_and_numeric_values(self):
+        class Permission(IntFlag):
+            """Permissions."""
+            READ = 1
+            WRITE = 2
+            READ_WRITE = READ | WRITE
+
+        doc = functions.dox_a_class(Permission)
+        expected = """# `Permission(IntFlag)`
+
+Permissions.
+
+## Members
+
+- `READ = 1`
+- `WRITE = 2`
+- `READ_WRITE = READ | WRITE = 3`
+
+"""
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}} "
+            f"diff {{{diff(expected, doc)}}}"
+        )
+
+    def test_private_enum_members_follow_visibility_options(self):
+        class Access(Enum):
+            _SECRET = 1
+            PUBLIC = 2
+
+        doc = functions.dox_a_class(Access)
+        assert '- `_SECRET = 1`' not in doc, doc
+        assert '- `PUBLIC = 2`' in doc, doc
+
+        doc = functions.dox_a_class(Access, {'include_private': True})
+        assert '- `_SECRET = 1`' in doc, doc
+
+        doc = functions.dox_a_class(
+            Access, {'include_private': True, 'exclude_names': ['PUBLIC']}
+        )
+        assert '- `PUBLIC = 2`' not in doc, doc
+        assert '- `_SECRET = 1`' in doc, doc
+
+        doc = functions.dox_a_class(Access, {'exclude_names': ['PUBLIC']})
+        assert '## Members' not in doc, doc
+
+    def test_flag_union_falls_back_to_numeric_when_component_excluded(self):
+        class Permission(Flag):
+            READ = auto()
+            WRITE = auto()
+            READ_WRITE = READ | WRITE
+
+        doc = functions.dox_a_class(
+            Permission, {'exclude_names': ['WRITE']}
+        )
+
+        assert '- `READ_WRITE = 3`' in doc, doc
+        assert 'READ_WRITE = READ |' not in doc, doc
+
+    def test_alias_falls_back_to_value_when_target_excluded(self):
+        class Color(Enum):
+            RED = 1
+            CRIMSON = 1
+
+        doc = functions.dox_a_class(Color, {'exclude_names': ['RED']})
+
+        assert '- `CRIMSON = 1`' in doc, doc
+        assert 'CRIMSON = RED' not in doc, doc
+
+    def test_enum_members_and_methods_render_in_order(self):
+        class Status(Enum):
+            """Statuses."""
+            READY = auto()
+
+            def describe(self) -> str:
+                """Describe the status."""
+                return self.name
+
+        doc = functions.dox_a_class(Status)
+        expected = """# `Status(Enum)`
+
+Statuses.
+
+## Members
+
+- `READY = 1`
+
+## Methods
+
+### `describe() -> str:`
+
+Describe the status.
+
+"""
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}} "
+            f"diff {{{diff(expected, doc)}}}"
+        )
+
+    def test_empty_enum_has_no_members_section(self):
+        class Empty(Enum):
+            """An empty enum."""
+
+        doc = functions.dox_a_class(Empty)
+
+        assert '## Members' not in doc, doc
+
+    def test_enum_member_backticks_can_be_disabled(self):
+        class Status(Enum):
+            READY = auto()
+
+        doc = functions.dox_a_class(Status, {'backtick_names': False})
+
+        assert '- READY = 1' in doc, doc
+        assert '- `READY = 1`' not in doc, doc
+
+    def test_complex_enum_values_follow_default_policy(self):
+        class Config(Enum):
+            LARGE = list(range(10))
+
+        doc = functions.dox_a_class(Config)
+        assert '- `LARGE = ...`' in doc, doc
+
+        verbose = functions.dox_a_class(
+            Config, {'verbose_defaults': True}
+        )
+        assert (
+            '- `LARGE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]`'
+        ) in verbose, verbose
+
+    def test_enum_members_are_documented_in_module(self):
+        class Status(Enum):
+            READY = auto()
+
+        module = ModuleType('mymod')
+        module.Status = Status
+
+        observed = functions.dox_a_module(module)
+
+        assert '#### Members' in observed, observed
+        assert '- `READY = 1`' in observed, observed
 
 
 class TestDoxAClassAnnotations(unittest.TestCase):
