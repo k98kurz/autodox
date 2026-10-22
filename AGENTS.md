@@ -18,7 +18,11 @@ a human.
   - If you have access to BOTH the todoread and todowrite tools, use them.
   - If you lack access to one of those tools, use a todo.md file.
   - ALWAYS check both todoread and the todo.md file when continuing after compaction.
-- When refactoring, verify that it works with one case before copying throughout.
+- When refactoring, verify that it works with one case before copying throughout,
+  and retain original behavior, including debug/logging statements.
+- When asked to restore something after a refactor, restore the original
+  code verbatim from the diff rather than re-deriving it. Make the minimal
+  addition needed to satisfy the new code.
 - Prefer a TDD approach:
   1. Write a test that fails.
   2. Prove it fails by running the test.

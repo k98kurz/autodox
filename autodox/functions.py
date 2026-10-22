@@ -162,6 +162,20 @@ def _list(line: str, options: dict | None = None) -> str:
     return _invoke_handler(Event.AFTER_LIST, doc)
 
 
+def _format_entry(
+        entry: str, entry_format: str, header_level: int,
+        options: dict | None = None
+    ) -> str:
+    """Renders an entry using the requested format."""
+    match entry_format:
+        case 'header':
+            return _header(entry, header_level)
+        case 'paragraph':
+            return _paragraph(entry, options)
+        case _:
+            return _list(entry, options)
+
+
 def _unwrap_function(function: Callable) -> Callable:
     """Follows a `__wrapped__` chain to the underlying callable. Stops
         at `classmethod`/`staticmethod` descriptors and at cycles so
@@ -263,13 +277,16 @@ def _dox_alias(
     alias = _backtick(
         f'{binding} = {target}', _backtick_enabled(options, 'backtick_names')
     )
-    match format:
-        case 'header':
-            return _header(alias, header_level)
-        case 'paragraph':
-            return _paragraph(alias, options)
-        case _:
-            return _list(alias, options)
+    return _format_entry(alias, format, header_level, options)
+
+
+def _section(
+        title: str, entries: list[str], header_level: int, suffix: str = ''
+    ) -> str:
+    """Returns a titled documentation section, or an empty string."""
+    if not entries:
+        return ''
+    return _header(title, header_level) + ''.join(entries) + suffix
 
 
 def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
@@ -283,13 +300,11 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
     )
     options = options or {}
     module, options = _invoke_handler(Event.BEFORE_MODULE, module, options)
-    exclude_names = options['exclude_names'] if 'exclude_names' in options else []
-    exclude_types = options['exclude_types'] if 'exclude_types' in options else []
-    header_level = options['header_level'] if 'header_level' in options else 0
-    function_format = (
-        options['function_format'] if 'function_format' in options else 'header'
-    )
-    value_format = options['value_format'] if 'value_format' in options else 'list'
+    exclude_names = options.get('exclude_names', [])
+    exclude_types = options.get('exclude_types', [])
+    header_level = options.get('header_level', 0)
+    function_format = options.get('function_format', 'header')
+    value_format = options.get('value_format', 'list')
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
     include_submodules = 'include_submodules' in options
@@ -367,29 +382,17 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
     if hasattr(module, '__doc__') and module.__doc__:
         doc += _paragraph(module.__doc__, options)
 
-    if len(classes):
-        if options.get('sort_classes', False):
-            classes.sort(key=lambda entry: entry[0])
-        doc += _header('Classes', header_level + 1)
-        for _, cls in classes:
-            doc += cls
-
-    if len(functions):
-        doc += _header('Functions', header_level + 1)
-        for func in functions:
-            doc += func
-        if function_format == 'list':
-            doc += '\n'
-
-    if len(values):
-        doc += _header('Values', header_level + 1)
-        for val in values:
-            doc += val
-
-    if len(submodules):
-        doc += _header('Submodules', header_level + 1)
-        for sub in submodules:
-            doc += sub
+    if options.get('sort_classes', False):
+        classes.sort(key=lambda entry: entry[0])
+    doc += _section(
+        'Classes', [entry for _, entry in classes], header_level + 1
+    )
+    doc += _section(
+        'Functions', functions, header_level + 1,
+        '\n' if function_format == 'list' else ''
+    )
+    doc += _section('Values', values, header_level + 1)
+    doc += _section('Submodules', submodules, header_level + 1)
 
     return _invoke_handler(Event.AFTER_MODULE, doc)
 
@@ -403,8 +406,8 @@ def dox_a_value(value: Any, options: dict | None = None) -> str:
     _debug(1, 'dox_a_value(', value, options, ')')
     options = options or {}
     value, options = _invoke_handler(Event.BEFORE_VALUE, value, options)
-    header_level = options['header_level'] if 'header_level' in options else 0
-    format = options['format'] if 'format' in options else 'list'
+    header_level = options.get('header_level', 0)
+    format = options.get('format', 'list')
     backtick_names = _backtick_enabled(options, 'backtick_names')
     backtick_types = _backtick_enabled(options, 'backtick_types')
 
@@ -414,14 +417,9 @@ def dox_a_value(value: Any, options: dict | None = None) -> str:
 
     definition = _value_definition(value)
     if definition is not None:
-        clean = (
-            options['clean_type_aliases']
-            if 'clean_type_aliases' in options else True
-        )
+        clean = options.get('clean_type_aliases', True)
         if clean:
-            module_name = (
-                options['module_name'] if 'module_name' in options else ''
-            )
+            module_name = options.get('module_name', '')
             definition = _clean_type_alias_text(definition, module_name)
         entry = _backtick(f'{name} = {definition}', backtick_names)
     else:
@@ -429,16 +427,7 @@ def dox_a_value(value: Any, options: dict | None = None) -> str:
         type_str = _backtick(type(value).__name__, backtick_types)
         entry = f'{name}: {type_str}'
 
-    doc = ''
-
-    match format:
-        case 'header':
-            doc = _header(entry, header_level)
-        case 'paragraph':
-            doc = _paragraph(entry, options)
-        case _:
-            doc = _list(entry, options)
-
+    doc = _format_entry(entry, format, header_level, options)
     return _invoke_handler(Event.AFTER_VALUE, doc)
 
 
@@ -553,8 +542,8 @@ def _backtick_enabled(options: dict, key: str) -> bool:
         for every category; it never re-enables a category disabled by a
         granular option.
     """
-    master = options['backticks'] if 'backticks' in options else True
-    granular = options[key] if key in options else True
+    master = options.get('backticks', True)
+    granular = options.get(key, True)
     return master and granular
 
 
@@ -639,6 +628,42 @@ def _enum_default_str(value: Enum) -> str:
     return f'{class_name}({value.value!r})'
 
 
+def _is_builtin_container(value: Any) -> bool:
+    """Returns whether `value` is an exact builtin container type."""
+    return type(value) in (dict, list, tuple, set, frozenset)
+
+
+def _container_str(
+        value: Any, render: Callable[[Any], str],
+        options: dict | None = None
+    ) -> str:
+    """Renders a builtin container."""
+    if type(value) is dict:
+        items = [
+            (render(key), render(item)) for key, item in value.items()
+        ]
+        if (options or {}).get('sort_default_dicts', False):
+            items.sort()
+        rendered = ', '.join(f'{key}: {item}' for key, item in items)
+        return '{' + rendered + '}'
+    if type(value) is list:
+        return '[' + ', '.join(render(item) for item in value) + ']'
+    if type(value) is tuple:
+        items = ', '.join(render(item) for item in value)
+        return f'({items},)' if len(value) == 1 else f'({items})'
+    if type(value) is set:
+        if not value:
+            return 'set()'
+        items = sorted(render(item) for item in value)
+        return '{' + ', '.join(items) + '}'
+    if type(value) is frozenset:
+        if not value:
+            return 'frozenset()'
+        items = sorted(render(item) for item in value)
+        return 'frozenset({' + ', '.join(items) + '})'
+    raise TypeError(f'{type(value).__name__} is not a builtin container')
+
+
 def _simple_default_str(
         value: Any, options: dict | None = None
     ) -> str:
@@ -658,35 +683,10 @@ def _simple_default_str(
         return _enum_default_str(value)
     if isinstance(value, type):
         return value.__name__
-    if type(value) is dict:
-        items = [
-            (
-                _simple_default_str(key, options),
-                _simple_default_str(item, options),
-            )
-            for key, item in value.items()
-        ]
-        if options.get('sort_default_dicts', False):
-            items.sort()
-        rendered = ', '.join(f'{key}: {item}' for key, item in items)
-        return '{' + rendered + '}'
-    if type(value) is list:
-        return '[' + ', '.join(
-            _simple_default_str(item, options) for item in value
-        ) + ']'
-    if type(value) is tuple:
-        items = ', '.join(_simple_default_str(item, options) for item in value)
-        return f'({items},)' if len(value) == 1 else f'({items})'
-    if type(value) is set:
-        if not value:
-            return 'set()'
-        items = sorted(_simple_default_str(item, options) for item in value)
-        return '{' + ', '.join(items) + '}'
-    if type(value) is frozenset:
-        if not value:
-            return 'frozenset()'
-        items = sorted(_simple_default_str(item, options) for item in value)
-        return 'frozenset({' + ', '.join(items) + '})'
+    if _is_builtin_container(value):
+        return _container_str(
+            value, lambda item: _simple_default_str(item, options), options
+        )
     return repr(value)
 
 
@@ -725,45 +725,16 @@ def _verbose_default_str(
     if value_id in seen:
         return '...'
 
-    if type(value) is dict:
+    if _is_builtin_container(value):
         seen.add(value_id)
         try:
-            items = [
-                (
-                    _verbose_default_str(key, options, seen),
-                    _verbose_default_str(item, options, seen),
-                )
-                for key, item in value.items()
-            ]
+            return _container_str(
+                value,
+                lambda item: _verbose_default_str(item, options, seen),
+                options,
+            )
         finally:
             seen.discard(value_id)
-        if options.get('sort_default_dicts', False):
-            items.sort()
-        rendered = ', '.join(f'{key}: {item}' for key, item in items)
-        return '{' + rendered + '}'
-
-    if type(value) in (list, tuple, set, frozenset):
-        seen.add(value_id)
-        try:
-            rendered = [
-                _verbose_default_str(item, options, seen)
-                for item in value
-            ]
-        finally:
-            seen.discard(value_id)
-        if type(value) is list:
-            return '[' + ', '.join(rendered) + ']'
-        if type(value) is tuple:
-            body = ', '.join(rendered)
-            return f'({body},)' if len(rendered) == 1 else f'({body})'
-        rendered.sort()
-        if type(value) is set:
-            if not rendered:
-                return 'set()'
-            return '{' + ', '.join(rendered) + '}'
-        if not rendered:
-            return 'frozenset()'
-        return 'frozenset({' + ', '.join(rendered) + '})'
 
     return f'{type(value).__name__}(...)'
 
@@ -859,9 +830,9 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
     )
     options = options or {}
     function, options = _invoke_handler(Event.BEFORE_FUNCTION, function, options)
-    header_level = options['header_level'] if 'header_level' in options else 0
-    format = options['format'] if 'format' in options else 'list'
-    prepend = options['prepend'] if 'prepend' in options else ''
+    header_level = options.get('header_level', 0)
+    format = options.get('format', 'list')
+    prepend = options.get('prepend', '')
     backtick_signatures = _backtick_enabled(options, 'backtick_signatures')
 
     if iscoroutinefunction(_unwrap_for_inspection(function)):
@@ -918,22 +889,12 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
         sig_str += f' -> {_annotation_str(return_annotation)}'
     sig_str += f':{tick}' + ('' if format == 'header' else ' ')
 
-    doc = ''
-
-    match format:
-        case 'header':
-            doc = _header(sig_str, header_level)
-            if docstring:
-                doc += _paragraph(docstring, options)
-        case 'paragraph':
-            doc = _paragraph(sig_str, options)
-            if docstring:
-                doc += _paragraph(docstring, options)
-        case _:
-            doc = sig_str
-            if docstring:
-                doc += docstring
-            doc = _list(doc, options)
+    if format in ('header', 'paragraph'):
+        doc = _format_entry(sig_str, format, header_level, options)
+        if docstring:
+            doc += _paragraph(docstring, options)
+    else:
+        doc = _list(sig_str + (docstring or ''), options)
 
     return _invoke_handler(Event.AFTER_FUNCTION, doc)
 
@@ -981,47 +942,39 @@ def _annotation_owner(cls: type, name: str) -> str:
     return fallback
 
 
-def _dox_properties(
-        properties: dict, header_level: int = 0, classname: str = '',
-        options: dict | None = None
-    ) -> str:
-    """Format properties for a class."""
-    _debug(1, '_dox_properties(', properties, header_level, ')')
-    doc = ''
+def _partition_members(members: dict) -> tuple[dict, dict, dict]:
+    """Splits members into dunder, private, and public mappings,
+        preserving insertion order.
+    """
     dunders = {
         name: value
-        for name, value in properties.items()
+        for name, value in members.items()
         if name[:2] == '__'
     }
     privates = {
         name: value
-        for name, value in properties.items()
+        for name, value in members.items()
         if name[:1] == '_' and name not in dunders
     }
     publics = {
         name: value
-        for name, value in properties.items()
+        for name, value in members.items()
         if name not in dunders and name not in privates
     }
+    return dunders, privates, publics
 
-    if publics:
-        for name, value in publics.items():
-            display = _unmangle_name(name, classname)
-            if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{display}: {value.__doc__}', options)
-            else:
-                doc += _list(display, options)
 
-    if privates:
-        for name, value in privates.items():
-            display = _unmangle_name(name, classname)
-            if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{display}: {value.__doc__}', options)
-            else:
-                doc += _list(display, options)
+def _dox_properties(
+        properties: dict, classname: str = '', options: dict | None = None
+    ) -> str:
+    """Format properties for a class."""
+    header_level = (options or {}).get('header_level', 0)
+    _debug(1, '_dox_properties(', properties, header_level, ')')
+    doc = ''
+    dunders, privates, publics = _partition_members(properties)
 
-    if dunders:
-        for name, value in dunders.items():
+    for group in (publics, privates, dunders):
+        for name, value in group.items():
             display = _unmangle_name(name, classname)
             if hasattr(value, '__doc__') and value.__doc__:
                 doc += _list(f'{display}: {value.__doc__}', options)
@@ -1063,27 +1016,12 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
         getattr(cls, '__name__', '[unnamed class]'), methods, options, ')'
     )
     options = options or {}
-    header_level = options['header_level'] if 'header_level' in options else 0
+    header_level = options.get('header_level', 0)
     header_level += 1
     suboptions = {**options, 'header_level': header_level}
-    format = options['method_format'] if 'method_format' in options else 'header'
+    format = options.get('method_format', 'header')
     doc = ''
-
-    dunders = {
-        name: value
-        for name, value in methods.items()
-        if name[:2] == '__'
-    }
-    privates = {
-        name: value
-        for name, value in methods.items()
-        if name[:1] == '_' and name not in dunders
-    }
-    publics = {
-        name: value
-        for name, value in methods.items()
-        if name not in dunders and name not in privates
-    }
+    dunders, privates, publics = _partition_members(methods)
 
     for group in (dunders, publics, privates):
         for name, value in group.items():
@@ -1129,7 +1067,7 @@ def _dox_enum_members(cls: type, options: dict | None = None) -> str:
     """
     _debug(1, '_dox_enum_members(', cls, options, ')')
     options = options or {}
-    exclude_names = options['exclude_names'] if 'exclude_names' in options else []
+    exclude_names = options.get('exclude_names', [])
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
     backtick_names = _backtick_enabled(options, 'backtick_names')
@@ -1202,8 +1140,8 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
     )
     options = options or {}
     cls, options = _invoke_handler(Event.BEFORE_CLASS, cls, options)
-    exclude_names = options['exclude_names'] if 'exclude_names' in options else []
-    header_level = options['header_level'] if 'header_level' in options else 0
+    exclude_names = options.get('exclude_names', [])
+    header_level = options.get('header_level', 0)
     include_private = 'include_private' in options
     include_dunder = 'include_dunder' in options
     backtick_names = _backtick_enabled(options, 'backtick_names')
@@ -1282,9 +1220,7 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
 
     if properties:
         doc += _header('Properties', header_level + 1)
-        doc += _dox_properties(
-            properties, header_level, classname, options
-        ) + '\n'
+        doc += _dox_properties(properties, classname, options) + '\n'
 
     if methods:
         doc += _header('Methods', header_level + 1)
