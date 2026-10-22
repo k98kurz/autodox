@@ -67,6 +67,13 @@
   to strip from type alias definitions (set automatically by `dox_a_module`)
 - Fixed PEP 585 aliases such as `list[int]` being documented as classes on
   Python 3.10
+- Private and name-mangled methods, as well as dunder methods, now include
+  `@classmethod`/`@staticmethod` markers in their signatures, matching public
+  methods
+- Implicitly static `__new__` methods now render their real name and docstring
+  instead of `{unknown/unnamed}` and the `staticmethod` builtin's docstring
+- List-format values, functions, properties, and class annotations now wrap at
+  `line_length` like paragraph output instead of always using the default width
 
 ## 0.1.17
 

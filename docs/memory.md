@@ -35,9 +35,10 @@ and `dox_a_function` receive an object, and an object does not know the names it
 is bound to, so those functions must NOT attempt alias detection and must NOT
 accept a `name`/`binding` option for that purpose.
 
-Detect aliases in `dox_a_module` (module `__dict__` bindings) and `_dox_methods`
-(class `__dict__` bindings). A binding is an alias only when a *different*
-binding to the SAME object exists under the target's `__name__`, i.e.
+Detect aliases in `dox_a_module` (module `__dict__` bindings) and `_dox_method`
+(class `__dict__` bindings; called by `_dox_methods`). A binding is an alias
+only when a *different* binding to the SAME object exists under the target's
+`__name__`, i.e.
 `target != name and namespace.get(target) is item`. Do NOT treat any binding
 whose name differs from `__name__` as an alias: re-exported objects such as
 `from types import ModuleType` (whose `__name__` is `module`) would become false
@@ -171,12 +172,28 @@ strategy breaks a different case:
   wrapped classmethod; unwrapping through descriptors instead makes a wrapped
   staticmethod's underlying function look like a class-body function and drop
   a `self`/`cls`-named first parameter
-- `_dox_methods` must classify the class binding with `_is_classmethod` /
-  `_is_staticmethod` (via `_unwrap_function`) instead of
-  `isinstance(..., classmethod/staticmethod)`: an outer wrapper is not the
-  descriptor itself, so `isinstance` loses the `@classmethod`/`@staticmethod`
-  marker; for `@lru_cache` outside `@staticmethod` the binding is the wrapper,
-  not a `staticmethod` descriptor
+- `_dox_method` (the shared per-method renderer used by `_dox_methods`) must
+  classify the class binding with `_is_classmethod` / `_is_staticmethod` (via
+  `_unwrap_function`) instead of `isinstance(..., classmethod/staticmethod)`:
+  an outer wrapper is not the descriptor itself, so `isinstance` loses the
+  `@classmethod`/`@staticmethod` marker; for `@lru_cache` outside
+  `@staticmethod` the binding is the wrapper, not a `staticmethod` descriptor.
+  Classify for every visibility group (dunders, publics, privates), so
+  non-public descriptors keep their markers too
+- descriptors that CPython creates implicitly (`__new__` as `staticmethod`,
+  `__init_subclass__`/`__class_getitem__` as `classmethod`) lack `__name__` and
+  expose the descriptor type's `__doc__`; resolve names with `_name_of` and
+  docstrings through `__func__.__doc__` in `dox_a_function`. Do not pass
+  `__func__` as the function itself: `_has_implicit_receiver` then treats it as
+  a class-body function and drops a `cls`/`self` first parameter
+
+## Forward options at every `_list` call site
+
+`_list` delegates to `_paragraph`, so `_list(line)` silently ignores
+`line_length` and falls back to the default width. Every renderer that emits a
+list item must call `_list(line, options)`; `_dox_properties` therefore takes
+`options` and forwards it. Omitting `options` leaves list output at the default
+width while paragraph output honors the caller's `line_length`.
 
 ## Render defaults deterministically; never `str`/`repr` arbitrary values
 

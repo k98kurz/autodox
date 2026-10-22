@@ -926,6 +926,23 @@ class TestDoxAFunction(unittest.TestCase):
             f"expected {{\n{expected}}} but got {{\n{doc}}}"
         )
 
+    def test_list_format_respects_line_length(self):
+        def function_with_long_name(argument: int) -> None:
+            ...
+
+        observed = functions.dox_a_function(
+            function_with_long_name,
+            {
+                'format': 'list', 'line_length': 40,
+                'backtick_signatures': False,
+            },
+        )
+        expected = '- function_with_long_name(argument: int)\n-> None:\n'
+
+        assert observed == expected, (
+            f"expected\n{expected}\nbut observed\n{observed}"
+        )
+
 
 class TestDoxAClass(unittest.TestCase):
     def test_init_defaults_follow_verbose_policy(self):
@@ -1149,6 +1166,114 @@ Example async class method.
             f"expected {{\n{expected}}} but got {{\n{doc}}} "
             f"diff {{{diff(expected, doc)}}}"
         )
+
+    def test_non_public_descriptors_have_markers(self):
+        class C:
+            @classmethod
+            def __cm(cls) -> None:
+                ...
+
+            @staticmethod
+            def __sm() -> None:
+                ...
+
+            @classmethod
+            def _pcm(cls) -> None:
+                ...
+
+            @staticmethod
+            def _psm() -> None:
+                ...
+
+            @classmethod
+            def __init_subclass__(cls, **kwargs) -> None:
+                ...
+
+        observed = functions.dox_a_class(
+            C, {'include_private': True, 'include_dunder': True}
+        )
+
+        assert '### `@classmethod __cm() -> None:`' in observed, observed
+        assert '### `@staticmethod __sm() -> None:`' in observed, observed
+        assert '### `@classmethod _pcm() -> None:`' in observed, observed
+        assert '### `@staticmethod _psm() -> None:`' in observed, observed
+        assert (
+            '### `@classmethod __init_subclass__(**kwargs) -> None:`'
+            in observed
+        ), observed
+        assert '_C__' not in observed, observed
+
+    def test_implicit_staticmethod_new_has_name_and_docstring(self):
+        class C:
+            def __new__(cls, *args, **kwargs):
+                """Create an instance."""
+                ...
+
+        observed = functions.dox_a_class(C, {'include_dunder': True})
+
+        assert (
+            '### `@staticmethod __new__(cls, *args, **kwargs):`' in observed
+        ), observed
+        assert 'Create an instance.' in observed, observed
+        assert '{unknown/unnamed}' not in observed, observed
+        assert 'Convert a function to a static method' not in observed, observed
+
+    def test_implicit_classmethod_dunders_have_markers(self):
+        class C:
+            def __init_subclass__(cls, **kwargs) -> None:
+                ...
+
+            def __class_getitem__(cls, item) -> None:
+                ...
+
+        observed = functions.dox_a_class(C, {'include_dunder': True})
+
+        assert (
+            '### `@classmethod __init_subclass__(**kwargs) -> None:`'
+            in observed
+        ), observed
+        assert (
+            '### `@classmethod __class_getitem__(item) -> None:`'
+            in observed
+        ), observed
+
+    def test_wrapped_non_public_descriptors_keep_markers(self):
+        class C:
+            @classmethod
+            @lru_cache(maxsize=None)
+            def _cm(cls, x: int) -> int:
+                """Cached class method."""
+                return x
+
+            @staticmethod
+            @lru_cache(maxsize=None)
+            def _sm(x: int) -> int:
+                """Cached static method."""
+                return x
+
+            @lru_cache(maxsize=None)
+            @staticmethod
+            def _osm(x: int) -> int:
+                """Cached outer static method."""
+                return x
+
+        observed = functions.dox_a_class(C, {'include_private': True})
+
+        assert '### `@classmethod _cm(x: int) -> int:`' in observed, observed
+        assert '### `@staticmethod _sm(x: int) -> int:`' in observed, observed
+        assert '### `@staticmethod _osm(x: int) -> int:`' in observed, observed
+        assert '_lru_cache_wrapper' not in observed, observed
+
+    def test_property_list_respects_line_length(self):
+        class C:
+            @property
+            def prop(self) -> int:
+                """one two three four five six"""
+                ...
+
+        observed = functions.dox_a_class(C, {'line_length': 15})
+
+        assert '- prop: one two\nthree four five\nsix\n' in observed, observed
 
 
 class TestDoxAnEnum(unittest.TestCase):
@@ -1524,6 +1649,14 @@ class TestDoxAClassAnnotations(unittest.TestCase):
         assert '`public_attr`' not in doc, doc
         assert '`int`' not in doc, doc
 
+    def test_annotation_list_respects_line_length(self):
+        class C:
+            abc: int
+
+        observed = functions.dox_a_class(C, {'line_length': 10})
+
+        assert '- `abc`:\n`int`\n' in observed, observed
+
 
 class TestDoxAValue(unittest.TestCase):
     def test_value_type_is_backticked_by_default(self):
@@ -1561,6 +1694,20 @@ class TestDoxAValue(unittest.TestCase):
 
         options['format'] = 'paragraph'
         assert functions.dox_a_value(1, options) == 'x: int\n\n'
+
+    def test_list_format_respects_line_length(self):
+        class SomeExtremelyLongTypeName:
+            ...
+
+        observed = functions.dox_a_value(
+            SomeExtremelyLongTypeName(),
+            {'format': 'list', 'line_length': 20, 'name': 'v'},
+        )
+        expected = '- `v`:\n`SomeExtremelyLongTypeName`\n'
+
+        assert observed == expected, (
+            f"expected\n{expected}\nbut observed\n{observed}"
+        )
 
 
 class TestTypeAliasValues(unittest.TestCase):

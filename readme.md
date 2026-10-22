@@ -55,7 +55,7 @@ configured with the following options:
 - `--function-format=format` - can be one of 'header', 'paragraph', or 'list'
 - `--method-format=format` - can be one of 'header', 'paragraph', or 'list'
 - `--value-format=format` - can be one of 'header', 'paragraph', or 'list'
-- `--line-length=number` - number of chars per line in paragraphs
+- `--line-length=number` - number of chars per line in paragraphs and list items
 - `--include-private` to include things prefaced with `_`
 - `--include-dunder` to include things prefaced with `__`
 - `--include-submodules` to include submodules
@@ -126,7 +126,7 @@ modules encountered when analyzing the specified module
 - `document_submodules: bool` - if True, `dox_a_module` will be called
 recursively on any additional modules encountered when analyzing the specified
 module
-- `line_length: int` - number of chars per line in paragraphs
+- `line_length: int` - number of chars per line in paragraphs and list items
 - `backtick_names: bool` - if False, omits backticks from names (annotations,
 values, classes, modules, and aliases; defaults to True)
 - `backtick_types: bool` - if False, omits backticks from annotation and value
@@ -173,7 +173,7 @@ Produces docs for a value. Valid options are the following:
 - `header_level: int` - number of additional hashtags to add to headers
 - `format: str` - format can be one of 'header', 'paragraph', or 'list'
 - `name: str` - overrides the name used in the docs (the module binding name)
-- `line_length: int` - number of chars per line in paragraphs
+- `line_length: int` - number of chars per line in paragraphs and list items
 - `backtick_names: bool` - if False, omits backticks from the value name
   (defaults to True)
 - `backtick_types: bool` - if False, omits backticks from the value type
@@ -195,7 +195,7 @@ Produces docs for a function. Valid options are the following:
 - `header_level: int` - number of additional hashtags to add to headers
 - `format: str` - format can be one of 'header', 'paragraph', or 'list'
 - `prepend: str` - text prepended to the signature (used for decorators)
-- `line_length: int` - number of chars per line in paragraphs
+- `line_length: int` - number of chars per line in paragraphs and list items
 - `backtick_signatures: bool` - if False, omits backticks from the signature
   (defaults to True)
 - `backticks: bool` - if False, disables all backticks (defaults to True; see
@@ -233,7 +233,7 @@ Produces docs for a class. Valid options are the following:
 - `include_private: bool` - if True, includes things with names prefaced by '_'
 - `include_dunder: bool` - if True, includes things with names prefaced by '__'
 - `method_format: str` - can be one of 'header', 'paragraph', or 'list'
-- `line_length: int` - number of chars per line in paragraphs
+- `line_length: int` - number of chars per line in paragraphs and list items
 - `backtick_names: bool` - if False, omits backticks from the class header and
   annotation names (defaults to True)
 - `backtick_types: bool` - if False, omits backticks from annotation types

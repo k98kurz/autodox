@@ -437,7 +437,7 @@ def dox_a_value(value: Any, options: dict | None = None) -> str:
         case 'paragraph':
             doc = _paragraph(entry, options)
         case _:
-            doc = _list(entry)
+            doc = _list(entry, options)
 
     return _invoke_handler(Event.AFTER_VALUE, doc)
 
@@ -855,7 +855,7 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
     """
     _debug(
         1, 'dox_a_function(',
-        getattr(function, '__name__', '[unnamed function]'), options, ')'
+        _name_of(function, '[unnamed function]'), options, ')'
     )
     options = options or {}
     function, options = _invoke_handler(Event.BEFORE_FUNCTION, function, options)
@@ -867,9 +867,7 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
     if iscoroutinefunction(_unwrap_for_inspection(function)):
         prepend = f'{prepend}async '
 
-    name = (
-        function.__name__ if hasattr(function, '__name__') else '{unknown/unnamed}'
-    )
+    name = _name_of(function, '{unknown/unnamed}')
     params, return_annotation = _signature_parts(function)
     has_receiver = _has_implicit_receiver(function)
 
@@ -911,7 +909,8 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
         parts.append('/')
 
     annotations = ', '.join(parts)
-    docstring = function.__doc__ if hasattr(function, '__doc__') else None
+    docstring_source = getattr(function, '__func__', function)
+    docstring = getattr(docstring_source, '__doc__', None)
 
     tick = '`' if backtick_signatures else ''
     sig_str = f'{tick}{prepend}{name}({annotations})'
@@ -934,7 +933,7 @@ def dox_a_function(function: Callable, options: dict | None = None) -> str:
             doc = sig_str
             if docstring:
                 doc += docstring
-            doc = _list(doc)
+            doc = _list(doc, options)
 
     return _invoke_handler(Event.AFTER_FUNCTION, doc)
 
@@ -983,7 +982,8 @@ def _annotation_owner(cls: type, name: str) -> str:
 
 
 def _dox_properties(
-        properties: dict, header_level: int = 0, classname: str = ''
+        properties: dict, header_level: int = 0, classname: str = '',
+        options: dict | None = None
     ) -> str:
     """Format properties for a class."""
     _debug(1, '_dox_properties(', properties, header_level, ')')
@@ -1008,27 +1008,52 @@ def _dox_properties(
         for name, value in publics.items():
             display = _unmangle_name(name, classname)
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{display}: {value.__doc__}')
+                doc += _list(f'{display}: {value.__doc__}', options)
             else:
-                doc += _list(display)
+                doc += _list(display, options)
 
     if privates:
         for name, value in privates.items():
             display = _unmangle_name(name, classname)
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{display}: {value.__doc__}')
+                doc += _list(f'{display}: {value.__doc__}', options)
             else:
-                doc += _list(display)
+                doc += _list(display, options)
 
     if dunders:
         for name, value in dunders.items():
             display = _unmangle_name(name, classname)
             if hasattr(value, '__doc__') and value.__doc__:
-                doc += _list(f'{display}: {value.__doc__}')
+                doc += _list(f'{display}: {value.__doc__}', options)
             else:
-                doc += _list(display)
+                doc += _list(display, options)
 
     return doc
+
+
+def _dox_method(
+        cls: type, name: str, value: Any, header_level: int,
+        format: str, options: dict, suboptions: dict
+    ) -> str:
+    """Renders one method binding, detecting aliases and descriptor
+        kinds. Class and static methods carry their descriptor marker
+        regardless of visibility.
+    """
+    _debug(1, '_dox_method(', name, value, header_level, format, ')')
+    target = _name_of(value, name)
+    if target != name and cls.__dict__.get(target) is value:
+        return _dox_alias(name, target, header_level, format, options)
+    if _is_classmethod(value):
+        return dox_a_function(
+            getattr(cls, name),
+            {**suboptions, 'format': format, 'prepend': '@classmethod '}
+        )
+    if _is_staticmethod(value):
+        return dox_a_function(
+            value,
+            {**suboptions, 'format': format, 'prepend': '@staticmethod '}
+        )
+    return dox_a_function(value, {**suboptions, 'format': format})
 
 
 def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
@@ -1060,39 +1085,11 @@ def _dox_methods(cls: type, methods: dict, options: dict | None = None) -> str:
         if name not in dunders and name not in privates
     }
 
-    if dunders:
-        for name, value in dunders.items():
-            target = _name_of(value, name)
-            if target != name and cls.__dict__.get(target) is value:
-                doc += _dox_alias(name, target, header_level, format, options)
-            else:
-                doc += dox_a_function(value, {**suboptions, 'format': format})
-
-    if publics:
-        for name, value in publics.items():
-            target = _name_of(value, name)
-            if target != name and cls.__dict__.get(target) is value:
-                doc += _dox_alias(name, target, header_level, format, options)
-            elif _is_classmethod(value):
-                doc += dox_a_function(
-                    getattr(cls, name),
-                    {**suboptions, 'format': format, 'prepend': '@classmethod '}
-                )
-            elif _is_staticmethod(value):
-                doc += dox_a_function(
-                    value,
-                    {**suboptions, 'format': format, 'prepend': '@staticmethod '}
-                )
-            else:
-                doc += dox_a_function(value, {**suboptions, 'format': format})
-
-    if privates:
-        for name, value in privates.items():
-            target = _name_of(value, name)
-            if target != name and cls.__dict__.get(target) is value:
-                doc += _dox_alias(name, target, header_level, format, options)
-            else:
-                doc += dox_a_function(value, {**suboptions, 'format': format})
+    for group in (dunders, publics, privates):
+        for name, value in group.items():
+            doc += _dox_method(
+                cls, name, value, header_level, format, options, suboptions
+            )
 
     return doc
 
@@ -1280,12 +1277,14 @@ def dox_a_class(cls: type, options: dict | None = None) -> str:
         for name, value in annotations.items():
             name_str = _backtick(name, backtick_names)
             type_str = _backtick(_annotation_str(value), backtick_types)
-            doc += _list(f'{name_str}: {type_str}')
+            doc += _list(f'{name_str}: {type_str}', options)
         doc += '\n'
 
     if properties:
         doc += _header('Properties', header_level + 1)
-        doc += _dox_properties(properties, header_level, classname) + '\n'
+        doc += _dox_properties(
+            properties, header_level, classname, options
+        ) + '\n'
 
     if methods:
         doc += _header('Methods', header_level + 1)
