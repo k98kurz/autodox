@@ -137,6 +137,34 @@ contents. `clean_type_aliases=False` disables cleanup. Render aliases as
 `Name = Type` (one pair of backticks, governed by `backtick_names`), leaving
 ordinary values in the `Name: type` form.
 
+Python 3.14 unifies `types.UnionType` with `typing.Union`, so `int | str` is a
+`typing.Union` instance with `__name__ == 'Union'`, and `Optional[X]` loses its
+name/identity. Never use `__name__` or `str()` alone to render a union: 3.14
+preserves member order and omits the `typing.` prefix, so `Union[None, int]`
+stringifies as `None | int` while `Optional[int]` stringifies as `int | None`
+even though they compare equal. Render unions structurally with
+`_union_annotation_str`, which uses `get_origin`/`get_args` and places `None`
+last. Canonicalize remaining text with `_canonicalize_type_text`, which
+recursively rewrites `typing.Optional` and `typing.Union` to PEP 604 syntax
+with `None` last and maps `typing.List`, `typing.Dict`, `typing.Set`,
+`typing.FrozenSet`, `typing.Tuple`, and `typing.Type` to builtin generics. It
+also rewrites bare `ForwardRef('Name')` to the quoted name because
+`str(ForwardRef('Name'))` is `ForwardRef('Name')`; non-bare forms such as
+`ForwardRef(..., module=...)` are left unchanged. The canonicalizer,
+including that rewrite, must skip quoted spans so
+`Literal["ForwardRef('Foo')"]` and `Literal['typing.Optional[int]']` are
+preserved. `_annotation_str` must also return raw string annotations unchanged
+(PEP 563). After canonicalizing, `_normalize_union_text` reorders every PEP 604
+chain so a bare `None` is last, recursing into bracket groups and skipping
+quoted spans. This is required because `str()` preserves `None`-first order on
+3.14+ for unions nested inside non-union generics (e.g. `list[None | int]`),
+which are neither structural unions nor `typing.`-prefixed. It also renders a
+bare `NoneType` as `None` because `str(list[type(None)])` is `list[None]` on
+3.14+ but `list[NoneType]` before 3.14, while
+`typing.Callable[[type(None)], int]` keeps `NoneType` on every version. Match
+`NoneType` exactly so qualified names such as `mymod.NoneType` and quoted
+`'NoneType'` forward references are left alone.
+
 Detect `typing.NewType` values with `callable(value) and hasattr(value,
 '__supertype__')` rather than `isinstance(value, type)`: NewType has been a
 class since 3.10, so its instances are not types. Render them as

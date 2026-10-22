@@ -150,10 +150,16 @@ Module-level type aliases (for example `Handler = Callable[[Message], Message]`)
 are rendered in the Values section as `Handler = Callable[[Message], Message]`
 rather than by their private runtime class name. PEP 585 builtin generics, PEP
 604 unions, `typing` aliases, PEP 695 `type` aliases, and `typing.NewType` are
-supported. By default, `typing.`, `builtins.`, `collections.abc.`, and the
-documented module's own qualifier are stripped from the rendered definition;
-string literals inside a definition are left untouched. `NewType` values render
-as `Name = NewType('Name', Supertype)`.
+supported. `typing.Optional` and `typing.Union` are rendered as PEP 604 unions,
+and `typing.List`, `typing.Dict`, `typing.Set`, `typing.FrozenSet`,
+`typing.Tuple`, and `typing.Type` are rendered as their builtin generic
+equivalents on every supported Python version, e.g. `Optional[List[int]]`
+becomes `list[int] | None`. Unions place `None` last, and runtime forward
+references render in quotes, e.g. `Optional['Node']` becomes `'Node' | None`.
+By default, `typing.`, `builtins.`, `collections.abc.`, and the documented
+module's own qualifier are stripped from the rendered definition; string
+literals inside a definition are left untouched. `NewType` values render as
+`Name = NewType('Name', Supertype)`.
 
 When the same class or function is bound to more than one name in a module
 (e.g. `UsageError = DependencyError`), `dox_a_module` documents the target once
@@ -208,11 +214,12 @@ Produces docs for a function. Valid options are the following:
 By default, callable defaults, object instances, nested containers, and
 containers with more than three items are rendered as `...`. Scalar and small
 container defaults keep their literal form; type aliases render as their
-definitions (PEP 695 `type` aliases as their names) and `NewType` values as
-their names. `typing.Any` renders as `Any`
-on all supported Python versions. Bytes-like defaults are also elided when
-they exceed 40 bytes, including when nested inside a small container. With
-`verbose_defaults`, callables and callable instances render as
+definitions (PEP 695 `type` aliases as their names) using the same canonical
+PEP 604/builtin-generic form, and `NewType` values render as their names.
+`typing.Any` renders as `Any` on all supported Python versions. Bytes-like
+defaults are also elided when they exceed 40 bytes, including when nested
+inside a small container. With `verbose_defaults`, callables and callable
+instances render as
 `Callable[..., ReturnType]`, non-callable object instances use a stable
 `TypeName(...)` placeholder, and containers are expanded recursively.
 Combined `Flag` defaults render as fully qualified member unions, such as

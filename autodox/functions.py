@@ -431,12 +431,246 @@ def dox_a_value(value: Any, options: dict | None = None) -> str:
     return _invoke_handler(Event.AFTER_VALUE, doc)
 
 
+_BUILTIN_GENERIC_ALIASES = {
+    'Dict': 'dict',
+    'FrozenSet': 'frozenset',
+    'List': 'list',
+    'Set': 'set',
+    'Tuple': 'tuple',
+    'Type': 'type',
+}
+
+
+def _quoted_end(text: str, start: int) -> int:
+    """Returns the index immediately after the quoted span at `start`."""
+    quote = text[start]
+    index = start + 1
+    while index < len(text):
+        if text[index] == '\\':
+            index += 2
+            continue
+        if text[index] == quote:
+            return index + 1
+        index += 1
+    return len(text)
+
+
+def _type_token_start(text: str, index: int) -> bool:
+    """Returns whether `index` starts a standalone type token."""
+    if index == 0:
+        return True
+    previous = text[index - 1]
+    return not (previous.isalnum() or previous in '_.')
+
+
+def _matching_bracket(text: str, start: int) -> int:
+    """Returns the index of the bracket closing the one at `start`."""
+    depth = 0
+    index = start
+    while index < len(text):
+        char = text[index]
+        if char in ("'", '"'):
+            index = _quoted_end(text, index)
+            continue
+        if char == '[':
+            depth += 1
+        elif char == ']':
+            depth -= 1
+            if depth == 0:
+                return index
+        index += 1
+    return -1
+
+
+def _split_top_level(text: str, delimiter: str) -> list[str]:
+    """Splits on `delimiter` outside quoted spans and brackets."""
+    parts = []
+    start = 0
+    depth = 0
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char in ("'", '"'):
+            index = _quoted_end(text, index)
+            continue
+        if char in '([{':
+            depth += 1
+        elif char in ')]}':
+            depth -= 1
+        elif char == delimiter and depth == 0:
+            parts.append(text[start:index].strip())
+            start = index + 1
+        index += 1
+    tail = text[start:].strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _split_type_args(text: str) -> list[str]:
+    """Splits top-level comma-separated type arguments."""
+    return _split_top_level(text, ',')
+
+
+def _normalize_union_text(text: str) -> str:
+    """Moves a bare `None` to the end of each PEP 604 union chain,
+        including chains nested inside generics, and renders a bare
+        `NoneType` as `None`, without rewriting quoted spans.
+    """
+    members = _split_top_level(text, '|')
+    if len(members) > 1:
+        rendered = []
+        has_none = False
+        for member in members:
+            normalized = _normalize_union_text(member)
+            if normalized in ('None', 'NoneType'):
+                has_none = True
+            else:
+                rendered.append(normalized)
+        if has_none:
+            rendered.append('None')
+        return ' | '.join(rendered)
+    if text == 'NoneType':
+        return 'None'
+    return _normalize_bracket_groups(text)
+
+
+def _normalize_bracket_groups(text: str) -> str:
+    """Normalizes union chains nested inside bracket groups."""
+    out = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char in ("'", '"'):
+            end = _quoted_end(text, index)
+            out.append(text[index:end])
+            index = end
+            continue
+        if char == '[':
+            close = _matching_bracket(text, index)
+            if close == -1:
+                out.append(char)
+                index += 1
+                continue
+            args = _split_type_args(text[index + 1:close])
+            normalized = ', '.join(
+                _normalize_union_text(arg) for arg in args
+            )
+            out.append(f'[{normalized}]')
+            index = close + 1
+            continue
+        out.append(char)
+        index += 1
+    return ''.join(out)
+
+
+def _pep604_union(parts: list[str]) -> str:
+    """Renders type arguments using PEP 604 union syntax with `None`
+        last.
+    """
+    rendered = []
+    has_none = False
+    for part in parts:
+        canonical = _canonicalize_type_text(part)
+        if canonical in ('None', 'NoneType'):
+            has_none = True
+        else:
+            rendered.append(canonical)
+    if has_none:
+        rendered.append('None')
+    return ' | '.join(rendered)
+
+
+def _canonicalize_type_text(text: str) -> str:
+    """Rewrites typing aliases to PEP 604 unions and builtin generics,
+        and unwraps `ForwardRef('Name')` to a quoted name.
+    """
+    out = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char in ("'", '"'):
+            end = _quoted_end(text, index)
+            out.append(text[index:end])
+            index = end
+            continue
+        if  (   text.startswith('ForwardRef(', index)
+                and _type_token_start(text, index)
+            ):
+            quote_index = index + len('ForwardRef(')
+            if  (   quote_index < len(text)
+                    and text[quote_index] in ("'", '"')
+                ):
+                end = _quoted_end(text, quote_index)
+                if end < len(text) and text[end] == ')':
+                    out.append(text[quote_index:end])
+                    index = end + 1
+                    continue
+        if  (   text.startswith('typing.', index)
+                and _type_token_start(text, index)
+            ):
+            name_start = index + len('typing.')
+            name_end = name_start
+            while (
+                    name_end < len(text)
+                    and (text[name_end].isalnum() or text[name_end] == '_')
+                ):
+                name_end += 1
+            name = text[name_start:name_end]
+            if  (   name in ('Optional', 'Union')
+                    and name_end < len(text)
+                    and text[name_end] == '['
+                ):
+                close = _matching_bracket(text, name_end)
+                if close != -1:
+                    parts = _split_type_args(text[name_end + 1:close])
+                    if name == 'Optional':
+                        parts.append('None')
+                    out.append(_pep604_union(parts))
+                    index = close + 1
+                    continue
+            alias = _BUILTIN_GENERIC_ALIASES.get(name)
+            if alias is not None:
+                out.append(alias)
+                index = name_end
+                continue
+        out.append(char)
+        index += 1
+    return ''.join(out)
+
+
+def _union_annotation_str(annotation: Any) -> str | None:
+    """Returns PEP 604 union text with `None` last, or `None` when the
+        annotation is not a union.
+    """
+    origin = get_origin(annotation)
+    if origin is not typing.Union and origin is not UnionType:
+        return None
+    rendered = []
+    has_none = False
+    for arg in get_args(annotation):
+        if arg is type(None):
+            has_none = True
+        else:
+            rendered.append(_annotation_str(arg))
+    if has_none:
+        rendered.append('None')
+    return ' | '.join(rendered)
+
+
 def _annotation_str(annotation: Any) -> str:
     """Renders an annotation as a str, keeping subscripts such as
-        `dict[str, str]` verbatim.
+        `dict[str, str]` verbatim, using canonical PEP 604 unions with
+        `None` last, and quoting forward references.
     """
-    text = str(annotation)
-    if '[' in text:
+    if isinstance(annotation, str):
+        return annotation
+    union = _union_annotation_str(annotation)
+    if union is not None:
+        return union
+    raw = str(annotation)
+    text = _normalize_union_text(_canonicalize_type_text(raw))
+    if text != raw or '[' in text or '|' in text:
         return text
     return annotation.__name__ if hasattr(annotation, '__name__') else text
 
@@ -461,7 +695,7 @@ def _type_alias_text(value: Any) -> str:
             return _annotation_str(value.__value__)
         except Exception:
             return '...'
-    return str(value)
+    return _annotation_str(value)
 
 
 def _is_new_type(value: Any) -> bool:

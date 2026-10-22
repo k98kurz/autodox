@@ -26,6 +26,16 @@
   as `Name = Type` instead of their private runtime class name (e.g.
   `_CallableGenericAlias`); PEP 585 builtin generics, PEP 604 unions, `typing`
   aliases, and PEP 695 `type` aliases are supported
+- Python 3.14 and 3.15 are now supported; unions are rendered as PEP 604
+  unions instead of `Union`
+- Annotation, type alias, and default rendering now canonicalizes
+  `typing.Optional` and `typing.Union` to PEP 604 syntax and `typing.List`,
+  `typing.Dict`, `typing.Set`, `typing.FrozenSet`, `typing.Tuple`, and
+  `typing.Type` to builtin generics on all supported Python versions (e.g.
+  `Optional[List[int]]` renders as `list[int] | None`); unions place `None`
+  last, `type(None)` inside generic arguments renders as `None` (e.g.
+  `list[type(None)]` renders as `list[None]`), and runtime forward references
+  render in quotes (e.g. `Optional['Node']` renders as `'Node' | None`)
 - `typing.NewType` values now render as `Name = NewType('Name', Supertype)`
   instead of `Name: NewType`
 - Functions and methods wrapped by decorators exposing `__wrapped__` (e.g.

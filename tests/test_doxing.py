@@ -7,8 +7,8 @@ from functools import lru_cache, partial, wraps
 from platform import python_version
 from types import ModuleType, FunctionType, MethodType
 from typing import (
-    Any, Callable, Hashable, List, Literal, NewType, Optional, Protocol,
-    runtime_checkable
+    Any, Callable, Dict, FrozenSet, Hashable, List, Literal, NewType,
+    Optional, Protocol, Set, Tuple, Type, Union, runtime_checkable
 )
 import collections.abc
 import sys
@@ -751,6 +751,17 @@ class TestDoxAFunction(unittest.TestCase):
                 f"expected {{\n{expected}}} but got {{\n{doc}}}"
             )
             assert '0x' not in doc
+
+    def test_optional_default_renders_canonically(self):
+        def fn(value=Optional[List[int]]) -> None:
+            ...
+
+        doc = functions.dox_a_function(fn)
+        expected = '- `fn(value = list[int] | None) -> None:`\n'
+
+        assert doc == expected, (
+            f"expected {{\n{expected}}} but got {{\n{doc}}}"
+        )
 
     def test_type_alias_inside_container_renders_inline(self):
         Alias = list[int]
@@ -1748,7 +1759,135 @@ class TestTypeAliasValues(unittest.TestCase):
 
         observed = functions.dox_a_module(module)
 
-        assert '- `Maybe = Optional[List[int]]`' in observed, observed
+        assert '- `Maybe = list[int] | None`' in observed, observed
+
+    def test_optional_and_union_aliases_render_pep604(self):
+        module = ModuleType('mymod')
+        module.Maybe = Optional[int]
+        module.Either = Union[int, str]
+        module.Nested = list[Optional[int]]
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `Maybe = int | None`' in observed, observed
+        assert '- `Either = int | str`' in observed, observed
+        assert '- `Nested = list[int | None]`' in observed, observed
+
+    def test_union_with_none_renders_none_last(self):
+        module = ModuleType('mymod')
+        module.Maybe = Union[None, int]
+        module.Mixed = Union[None, int, str]
+        module.OptionalMaybe = Optional[int]
+        module.Nested = list[Union[None, int]]
+        module.Mapping = Dict[str, Union[None, int]]
+        module.Interleaved = list[Union[str, None, int]]
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `Maybe = int | None`' in observed, observed
+        assert '- `Mixed = int | str | None`' in observed, observed
+        assert '- `OptionalMaybe = int | None`' in observed, observed
+        assert '- `Nested = list[int | None]`' in observed, observed
+        assert '- `Mapping = dict[str, int | None]`' in observed, observed
+        assert '- `Interleaved = list[str | int | None]`' in observed, observed
+
+    def test_non_union_none_type_renders_as_none(self):
+        module = ModuleType('mymod')
+        module.MaybeList = list[type(None)]
+        module.MaybeDict = dict[str, type(None)]
+        module.MaybePair = tuple[type(None), ...]
+        module.MaybeCallable = Callable[[type(None)], int]
+
+        observed = functions.dox_a_module(module)
+
+        assert '- `MaybeList = list[None]`' in observed, observed
+        assert '- `MaybeDict = dict[str, None]`' in observed, observed
+        assert '- `MaybePair = tuple[None, ...]`' in observed, observed
+        assert '- `MaybeCallable = Callable[[None], int]`' in observed, observed
+
+    def test_quoted_none_type_is_preserved(self):
+        module = ModuleType('mymod')
+        module.Vec = list['NoneType']
+
+        observed = functions.dox_a_module(module)
+
+        assert "- `Vec = list['NoneType']`" in observed, observed
+
+    def test_forward_ref_unions_render_quoted(self):
+        module = ModuleType('mymod')
+        module.Maybe = Optional['Message']
+        module.Either = Union['Message', int]
+
+        observed = functions.dox_a_module(module)
+
+        assert "- `Maybe = 'Message' | None`" in observed, observed
+        assert "- `Either = 'Message' | int`" in observed, observed
+
+    def test_nested_forward_refs_render_quoted(self):
+        module = ModuleType('mymod')
+        module.Vec = List['Message']
+        module.Map = Dict[str, 'Message']
+
+        observed = functions.dox_a_module(module)
+
+        assert "- `Vec = list['Message']`" in observed, observed
+        assert "- `Map = dict[str, 'Message']`" in observed, observed
+
+    def test_typing_generics_render_as_builtin_generics(self):
+        module = ModuleType('mymod')
+        module.Vec = List[int]
+        module.Map = Dict[str, int]
+        module.Items = Set[int]
+        module.Frozen = FrozenSet[int]
+        module.Pair = Tuple[int, str]
+        module.Cls = Type[int]
+
+        observed = functions.dox_a_module(module)
+
+        for expected in (
+                '- `Vec = list[int]`',
+                '- `Map = dict[str, int]`',
+                '- `Items = set[int]`',
+                '- `Frozen = frozenset[int]`',
+                '- `Pair = tuple[int, str]`',
+                '- `Cls = type[int]`',
+            ):
+            assert expected in observed, observed
+
+    def test_nested_typing_aliases_render_canonically(self):
+        module = ModuleType('mymod')
+        module.Handler = Callable[
+            [Optional[int]], Optional[List[int]]
+        ]
+
+        observed = functions.dox_a_module(module)
+
+        assert (
+            '- `Handler = Callable[[int | None], list[int] | None]`'
+        ) in observed, observed
+
+    def test_canonicalization_preserves_quoted_type_text(self):
+        module = ModuleType('mymod')
+        module.Lit = Literal[
+            'typing.Optional[typing.List[int]]', 'typing.List[int]'
+        ]
+
+        observed = functions.dox_a_module(module)
+
+        assert (
+            "- `Lit = Literal['typing.Optional[typing.List[int]]', "
+            "'typing.List[int]']`"
+        ) in observed, observed
+
+    def test_canonicalization_preserves_quoted_forward_ref_text(self):
+        module = ModuleType('mymod')
+        module.Lit = Literal["ForwardRef('Foo')"]
+
+        observed = functions.dox_a_module(module)
+
+        assert (
+            "- `Lit = Literal[\"ForwardRef('Foo')\"]`"
+        ) in observed, observed
 
     def test_ordinary_values_keep_colon_form(self):
         module = ModuleType('mymod')
