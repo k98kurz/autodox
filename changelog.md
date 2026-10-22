@@ -17,6 +17,8 @@
 - Added a `backticks` option and `--no-backticks` CLI flag that disable all
   backtick quoting at once, even for categories the granular options leave on
 - Added a `-v` / `--version` CLI flag that prints the package version and exits
+- CLI output now ends with a footer showing the autodox and Python versions; it
+  is also available as `dox_footer()`, and `--no-footer` suppresses it
 - Enum subclasses now document their members in a `Members` section, including
   aliases (`CRIMSON = RED`) and `Flag`/`IntFlag` composites
   (`READ_WRITE = READ | WRITE = 3`)

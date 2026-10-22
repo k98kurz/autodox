@@ -49,6 +49,10 @@ Collects some information about a value and returns it formatted as specified in
 the options or as a list. Runtime type aliases and `NewType` values render as
 `name = definition` instead of their runtime class name.
 
+### `dox_footer() -> str:`
+
+Returns a markdown footer with the autodox and Python versions.
+
 ### `set_before_handler(event: Event, function: Callable[[Any, dict], tuple[Any, dict]]) -> None:`
 
 Sets a handler for a BEFORE_ event.

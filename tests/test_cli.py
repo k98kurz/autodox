@@ -25,6 +25,11 @@ class TestCli(unittest.TestCase):
             rc = cli.invoke_cli(['autodox', *argv])
         return rc, out.getvalue(), err.getvalue()
 
+    def _with_footer(self, doc: str) -> str:
+        doc = doc.rstrip('\n')
+        footer = functions.dox_footer()
+        return f'{doc}\n\n{footer}\n' if doc else f'{footer}\n'
+
     def test_defaults_return_zero_with_empty_settings(self):
         fake = ModuleType('fakemod')
         captured = {}
@@ -40,10 +45,33 @@ class TestCli(unittest.TestCase):
             rc, out, err = self._run(['fakemod'])
 
         assert rc == 0, f'expected 0, got {rc}'
-        assert out == 'DOC\n', f'expected DOC output, got {out!r}'
+        expected = self._with_footer('DOC')
+        assert out == expected, f'expected {expected!r}, got {out!r}'
         assert err == '', f'expected no debug output, got {err!r}'
         assert captured['module'] is fake
         assert captured['options'] == {}, captured['options']
+
+    def test_footer_is_on_by_default(self):
+        fake = ModuleType('fakemod')
+
+        with patch.object(cli, 'import_module', return_value=fake), \
+                patch.object(functions, 'dox_a_module', return_value='DOC'):
+            rc, out, err = self._run(['fakemod'])
+
+        assert rc == 0, f'expected 0, got {rc}'
+        assert out.endswith(f'{functions.dox_footer()}\n'), out
+        assert err == '', err
+
+    def test_no_footer_omits_footer(self):
+        fake = ModuleType('fakemod')
+
+        with patch.object(cli, 'import_module', return_value=fake), \
+                patch.object(functions, 'dox_a_module', return_value='DOC'):
+            rc, out, err = self._run(['fakemod', '--no-footer'])
+
+        assert rc == 0, f'expected 0, got {rc}'
+        assert out == 'DOC\n', out
+        assert err == '', err
 
     def test_debug_output_is_not_propagated_to_root(self):
         fake = ModuleType('fakemod')
@@ -68,7 +96,8 @@ class TestCli(unittest.TestCase):
             root.removeHandler(root_handler)
 
         assert rc == 0, f'expected 0, got {rc}'
-        assert out == 'DOC\n', f'expected only DOC, got {out!r}'
+        expected = self._with_footer('DOC')
+        assert out == expected, f'expected {expected!r}, got {out!r}'
         assert err.count('unique-marker') == 1, err
         assert captured == [], captured
 
@@ -105,6 +134,7 @@ class TestCli(unittest.TestCase):
             '--verbose-defaults',
             '--sort-default-dicts',
             '--sort-classes',
+            '--no-footer',
             '--debug', '--debug',
         ]
 
@@ -163,7 +193,8 @@ class TestCli(unittest.TestCase):
                 )
 
             assert rc == 0, f'expected 0, got {rc}'
-            assert out == 'DOC\n', f'expected only DOC, got {out!r}'
+            expected = self._with_footer('DOC')
+            assert out == expected, f'expected {expected!r}, got {out!r}'
             for tier in ('depth-one', 'depth-two', 'depth-three'):
                 if tier in visible:
                     assert tier in err, (debug_count, tier, err)

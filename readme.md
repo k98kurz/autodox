@@ -41,6 +41,9 @@ Use the following to document a module with default configuration:
 autodox module_name [options] > target_file.md
 ```
 
+By default, the output ends with a footer identifying the autodox and Python
+versions; pass `--no-footer` to omit it.
+
 Run `autodox --help` for the full, up-to-date list. The output can be
 configured with the following options:
 - `--exclude-name=name` to exclude a specific part of the module by name (or pass
@@ -72,6 +75,7 @@ configured with the following options:
   preserving insertion order
 - `--sort-classes` to sort classes by name instead of preserving module
   namespace order
+- `--no-footer` to omit the generated-by footer
 - `--debug` to increase the level of debug statements printed to stderr (starts
   at 0; levels 1-3 are available, and debug output does not contaminate redirected
   markdown)
@@ -96,11 +100,14 @@ documentation function(s). The following are included.
   produces docs for a function
 - `dox_a_class(cls: type, options: dict | None = None) -> str` produces docs for
   a class
+- `dox_footer() -> str` produces a markdown footer with the autodox and Python
+  versions
 
-The valid options for each will be described below. Additionally, there is a
-system for setting up hooks that interact with the doc generation process to
-change the inputs or outputs, and that will be described below the options for
-the four `dox_a_{thing}` functions.
+The valid options for the `dox_a_{thing}` functions are described below. The
+`dox_a_*` functions do not append the footer automatically. Additionally, there
+is a system for setting up hooks that interact with the doc generation process
+to change the inputs or outputs, and that will be described below the options
+for the four `dox_a_{thing}` functions.
 
 #### `dox_a_module(module: ModuleType, options: dict | None = None) -> str`
 

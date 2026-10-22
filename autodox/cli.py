@@ -120,6 +120,10 @@ def _build_parser(prog: str) -> ArgumentParser:
         help='sort classes by name instead of preserving definition order'
     )
     parser.add_argument(
+        '--no-footer', action='store_true',
+        help='omit the generated-by footer with version information'
+    )
+    parser.add_argument(
         '--debug', action='count', default=0,
         help=(
             'increases level of debug statements printed to stderr; starts at '
@@ -179,6 +183,13 @@ def _settings_from(options: Namespace) -> dict:
     return settings
 
 
+def _append_footer(doc: str) -> str:
+    """Appends the generated-by footer to a markdown document."""
+    doc = doc.rstrip('\n')
+    footer = functions.dox_footer()
+    return f'{doc}\n\n{footer}' if doc else footer
+
+
 def _configure_logging(debug: int) -> tuple[StreamHandler | None, int, bool]:
     """Configures the package logger for a CLI invocation."""
     logger = getLogger('autodox')
@@ -210,7 +221,10 @@ def invoke_cli(args: list[str]) -> int:
             module = import_module(options.module, options.package)
         else:
             module = import_module(options.module)
-        print(functions.dox_a_module(module, settings))
+        doc = functions.dox_a_module(module, settings)
+        if not options.no_footer:
+            doc = _append_footer(doc)
+        print(doc)
         return 0
     except ImportError as e:
         print(f'{type(e).__name__}: {str(e)}', file=sys.stderr)
