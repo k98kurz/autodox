@@ -116,6 +116,10 @@ def _build_parser(prog: str) -> ArgumentParser:
         )
     )
     parser.add_argument(
+        '--sort-classes', action='store_true',
+        help='sort classes by name instead of preserving definition order'
+    )
+    parser.add_argument(
         '--debug', action='count', default=0,
         help=(
             'increases level of debug statements printed to stderr; starts at '
@@ -170,6 +174,8 @@ def _settings_from(options: Namespace) -> dict:
         settings['verbose_defaults'] = True
     if options.sort_default_dicts:
         settings['sort_default_dicts'] = True
+    if options.sort_classes:
+        settings['sort_classes'] = True
     return settings
 
 

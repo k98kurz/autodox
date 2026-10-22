@@ -2312,6 +2312,55 @@ C.
         )
 
 
+class TestModuleClassOrdering(unittest.TestCase):
+    def _class_headers(self, doc: str) -> list[str]:
+        return [
+            line for line in doc.splitlines()
+            if line.startswith('### `')
+        ]
+
+    def _module(self) -> ModuleType:
+        class Zebra:
+            ...
+
+        class Apple:
+            ...
+
+        class Mango:
+            ...
+
+        module = ModuleType('sort_mod')
+        module.Mango = Mango
+        module.Zebra = Zebra
+        module.Apple = Apple
+        module.Aardvark = Zebra
+        return module
+
+    def test_sort_classes_is_opt_in_and_orders_aliases(self):
+        module = self._module()
+        unsorted = [
+            '### `Mango`', '### `Zebra`', '### `Apple`',
+            '### `Aardvark = Zebra`',
+        ]
+        sorted_headers = [
+            '### `Aardvark = Zebra`', '### `Apple`', '### `Mango`',
+            '### `Zebra`',
+        ]
+
+        observed = self._class_headers(functions.dox_a_module(module))
+        assert observed == unsorted, observed
+
+        disabled = self._class_headers(
+            functions.dox_a_module(module, {'sort_classes': False})
+        )
+        assert disabled == unsorted, disabled
+
+        enabled = self._class_headers(
+            functions.dox_a_module(module, {'sort_classes': True})
+        )
+        assert enabled == sorted_headers, enabled
+
+
 class TestBacktickOptions(unittest.TestCase):
     def test_module_header_is_backticked_by_default(self):
         module = ModuleType('sample_mod')

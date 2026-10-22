@@ -325,10 +325,12 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
             target = _name_of(item, name)
             if target != name and module.__dict__.get(target) is item:
                 doc = _dox_alias(name, target, header_level + 2, options=options)
+                sort_name = name
             else:
                 doc = dox_a_class(cls, suboptions)
+                sort_name = target
             if doc:
-                classes.append(doc)
+                classes.append((sort_name, doc))
             continue
 
         if _is_function_like(item):
@@ -356,8 +358,10 @@ def dox_a_module(module: ModuleType, options: dict | None = None) -> str:
         doc += _paragraph(module.__doc__, options)
 
     if len(classes):
+        if options.get('sort_classes', False):
+            classes.sort(key=lambda entry: entry[0])
         doc += _header('Classes', header_level + 1)
-        for cls in classes:
+        for _, cls in classes:
             doc += cls
 
     if len(functions):

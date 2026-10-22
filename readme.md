@@ -70,6 +70,8 @@ configured with the following options:
   abbreviating them to `...`
 - `--sort-default-dicts` to sort dictionary defaults by rendered key instead of
   preserving insertion order
+- `--sort-classes` to sort classes by name instead of preserving module
+  namespace order
 - `--debug` to increase the level of debug statements printed to stderr (starts
   at 0; levels 1-3 are available, and debug output does not contaminate redirected
   markdown)
@@ -133,6 +135,9 @@ category disabled by a granular option
   instead of abbreviating them to `...` (defaults to False)
 - `sort_default_dicts: bool` - if True, sorts dictionary defaults by rendered
   key instead of preserving insertion order (defaults to False)
+- `sort_classes: bool` - if True, sorts classes by name instead of preserving
+  module namespace order; alias entries sort by their binding name (defaults
+  to False)
 
 Module-level type aliases (for example `Handler = Callable[[Message], Message]`)
 are rendered in the Values section as `Handler = Callable[[Message], Message]`
@@ -150,7 +155,9 @@ additional binding. Alias detection is automatic; no configuration is required,
 and a class-body method alias such as `bar = foo` is handled the same way. An
 alias is only detected when the target is bound under its `__name__` in the
 same namespace: aliases of builtins, inherited methods, renamed imports, and
-name-mangled targets are documented under their `__name__` instead.
+name-mangled targets are documented under their `__name__` instead. With
+`sort_classes`, alias entries sort alongside other classes by their binding
+name.
 
 #### `dox_a_value(value: Any, options: dict | None = None) -> str`
 

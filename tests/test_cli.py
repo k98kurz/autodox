@@ -104,6 +104,7 @@ class TestCli(unittest.TestCase):
             '--no-clean-type-aliases',
             '--verbose-defaults',
             '--sort-default-dicts',
+            '--sort-classes',
             '--debug', '--debug',
         ]
 
@@ -132,6 +133,7 @@ class TestCli(unittest.TestCase):
             'clean_type_aliases': False,
             'verbose_defaults': True,
             'sort_default_dicts': True,
+            'sort_classes': True,
         }, captured['options']
         assert 'depth-one' in err, err
         assert 'depth-two' in err, err

@@ -51,6 +51,9 @@
   sort dictionary defaults by rendered key; insertion order is preserved by
   default, and sorting can be enabled when dict construction order may vary
   between runs
+- Added a `sort_classes` option and `--sort-classes` CLI flag to sort module
+  classes by name; module namespace order is preserved by default, and alias
+  entries sort by their binding name when enabled
 - Large `bytes` and `bytearray` defaults (over 40 bytes) are now elided like
   other large containers, including when nested inside a small container
 - `typing.Any` parameter defaults now render as `Any` consistently on Python
