@@ -84,7 +84,7 @@ def set_before_handler(
 
 def set_after_handler(event: Event, function: Callable[[str], str]) -> None:
     """Sets a handler for an AFTER_ event."""
-    _debug(3, 'set_after_handler(', event, ')')
+    _debug(3, 'set_after_handler(', event, function, ')')
     if type(event) is not Event:
         raise TypeError('event must be Event')
     if 'AFTER_' not in event.name:

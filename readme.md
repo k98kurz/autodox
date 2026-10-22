@@ -313,7 +313,7 @@ def handle_after_function(doc: str):
 set_after_handler(Event.AFTER_FUNCTION, handle_after_function)
 ```
 
-Muliple handlers can be set for each event, and they will be executed in order,
+Multiple handlers can be set for each event, and they will be executed in order,
 passing the output from the first as input to the second, etc. Example:
 
 ```python
